@@ -92,6 +92,24 @@ Conduct careful analysis within `<document_analysis>` XML tags, following these 
 4. **Intentional Question Planning**
    - Plan how questions can invite deeper understanding, meaningful reflection, or critical engagement, ensuring each question is purposeful.
 
+## Additional Instructions for Handling Irrelevant or Bogus Information
+
+### Identification and Ignoring of Irrelevant Information:
+
+- **Irrelevant Elements:** Explicitly disregard hyperlinks, advertisements, headers, footers, navigation menus, disclaimers, social media buttons, or any content clearly irrelevant or external to the core information of the text chunk.
+- **Bogus Information:** Detect and exclude any information that appears nonsensical or disconnected from the primary subject matter.
+
+### Decision Criteria for Question Generation:
+
+- **Meaningful Content Requirement:** Only generate questions if the provided `<text_chunk>` contains meaningful, coherent, and educationally valuable content.
+- **Complete Irrelevance:** If the entire `<text_chunk>` consists exclusively of irrelevant, promotional, web navigation, footer, header, or non-informational text, explicitly state this in your analysis and do NOT produce any question-answer pairs.
+
+### Documentation in Analysis:
+
+- Clearly document the rationale in the `<document_analysis>` tags when identifying irrelevant or bogus content, explaining your reasons for exclusion or inclusion decisions.
+- Briefly justify any decision NOT to generate questions due to irrelevance or poor quality content.
+
+
 ## Question Generation Guidelines
 
 ### Encouraged Question Characteristics:
@@ -245,6 +263,19 @@ Perform careful analysis within `<document_analysis>` XML tags:
 - False-premise
 - Edge-case
 
+
+## **Filtering Irrelevant Content**:
+  - **Ignore completely** any irrelevant, redundant, promotional, or unrelated content, including headers, footers, navigation links, promotional materials, ads, or extraneous hyperlinks frequently found in web extracts.
+  - **Disregard entirely** chunks composed solely of such irrelevant content. Do **not** generate questions from these chunks.
+  - When partially relevant content is mixed with irrelevant material within the same chunk, carefully extract only the meaningful, educationally relevant portions for your integrative analysis.
+
+- **Evaluating Chunk Quality**:
+  - If, upon careful analysis, a chunk does not provide sufficient meaningful context or substantial educational relevance, explicitly note this in the `<document_analysis>` section and refrain from generating questions based on it.
+
+- **Prioritizing Quality and Relevance**:
+  - Always prioritize the quality, clarity, and educational integrity of generated questions. Do not force questions from unsuitable content.
+
+
 ## Output Structure
 
 Present output as JSON objects conforming strictly to the following Pydantic model within `<output_json>` XML tags:
@@ -272,7 +303,11 @@ First, thoroughly conduct your analysis within `<document_analysis>` XML tags. T
 - Clearly communicate your thought process for integrative reasoning.
 - Adhere strictly to JSON formatting and Pydantic validation requirements.
 - Generate questions that genuinely inspire deeper reflection or meaningful exploration of the provided content.
-- When generating questions, NEVER include phrases like 'as per the text,' 'according to the document,' or any similar explicit references. Questions should inherently integrate content naturally and stand independently without explicit references to the source material"""
+- When generating questions, NEVER include phrases like 'as per the text,' 'according to the document,' or any similar explicit references. Questions should inherently integrate content naturally and stand independently without explicit references to the source material
+
+"""
+
+
 
 
 MULTI_HOP_QUESTION_GENERATION_USER_PROMPT = """<title>
