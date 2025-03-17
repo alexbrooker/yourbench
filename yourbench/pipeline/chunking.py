@@ -68,6 +68,7 @@ from yourbench.utils.dataset_engine import (
 )
 
 import evaluate
+import itertools  # <--- Added to generate all combinations for multi-hop chunking.
 
 # === Stage-Specific Logger Configuration ===
 os.makedirs("logs", exist_ok=True)
@@ -261,7 +262,7 @@ def run(config: Dict[str, Any]) -> None:
             doc_id=doc_id
         )
 
-        # Create multi-hop chunks
+        # Create multi-hop chunks (modified to ensure no duplicates)
         multihop = _multihop_chunking(
             single_hop_chunks,
             h_min=h_min,
@@ -490,9 +491,16 @@ def _multihop_chunking(
     num_multihops_factor: int
 ) -> List[Dict[str, List[str]]]:
     """
-    Creates multi-hop chunks by randomly sampling and concatenating subsets of
-    single-hop chunks. Each multi-hop chunk references multiple single-hop chunks
-    via chunk_ids.
+    Creates multi-hop chunks by generating all valid combinations of single-hop chunks
+    (from size h_min to h_max), then shuffling and picking the desired number. This
+    ensures no repeated multi-hop chunk grouping is created.
+
+    The total multi-hop chunks to select is determined by:
+        num_multihops = max(1, total_single_hops // num_multihops_factor).
+
+    If the number of possible unique combinations is less than or equal to num_multihops,
+    we return all. Otherwise, we select a random sample of size num_multihops from those
+    unique combinations.
 
     Args:
         single_hop_chunks (List[Dict[str, str]]): List of single-hop chunk dicts.
@@ -509,24 +517,28 @@ def _multihop_chunking(
     if not single_hop_chunks:
         return []
 
-    multihop_groups: List[Dict[str, List[str]]] = []
     total_single_hops = len(single_hop_chunks)
-    # Generate about total_single_hops / num_multihops_factor multi-hop items
+    # This is our target count for how many multi-hop combos we want to keep
     num_multihops = max(1, total_single_hops // num_multihops_factor)
 
-    for _ in range(num_multihops):
-        k = random.randint(h_min, h_max)
-        k = min(k, total_single_hops)
-        sampled_indices = sorted(random.sample(range(total_single_hops), k))
-        chosen_chunks = [single_hop_chunks[idx] for idx in sampled_indices]
+    # Build a list of ALL possible multi-hop combinations from h_min to h_max
+    all_combos: List[Dict[str, List[str]]] = []
+    for size in range(h_min, h_max + 1):
+        if size > total_single_hops:
+            break
+        for combo_indices in itertools.combinations(range(total_single_hops), size):
+            chosen_chunks = [single_hop_chunks[idx] for idx in combo_indices]
+            group_dict = {
+                "chunk_ids": [c["chunk_id"] for c in chosen_chunks],
+                "chunks_text": [c["chunk_text"] for c in chosen_chunks]
+            }
+            all_combos.append(group_dict)
 
-        group_dict = {
-            "chunk_ids": [c["chunk_id"] for c in chosen_chunks],
-            "chunks_text": [c["chunk_text"] for c in chosen_chunks]
-        }
-        multihop_groups.append(group_dict)
-
-    return multihop_groups
+    random.shuffle(all_combos)
+    if len(all_combos) <= num_multihops:
+        return all_combos
+    else:
+        return all_combos[:num_multihops]
 
 
 def _compute_info_density_metrics(
