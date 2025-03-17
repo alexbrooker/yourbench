@@ -4,7 +4,7 @@
 #
 # This module orchestrates the YourBench pipeline stages in a specified order.
 # It reads pipeline configuration from a config dictionary, runs each stage
-# if enabled, times each stage’s execution, logs errors to stage-specific
+# if enabled, times each stage's execution, logs errors to stage-specific
 # log files, and finally generates an overall timing chart of all stages.
 #
 # Usage:
@@ -19,7 +19,7 @@
 # stages in the config are also noted (but not executed).
 #
 # Key Responsibilities:
-# 1. Load the user’s pipeline configuration.
+# 1. Load the user's pipeline configuration.
 # 2. Execute each stage in `DEFAULT_STAGE_ORDER` if `run` is True in the config.
 # 3. Log all events, including errors, to a stage-specific file and the console.
 # 4. Collect and display timing data for each stage.
@@ -129,12 +129,20 @@ def run_pipeline(config_file_path: str, debug: bool = False) -> None:
             stage_module.run(config)
         except Exception as pipeline_error:
             logger.error(f"Error executing pipeline stage '{stage_name}': {str(pipeline_error)}")
-            # Remove stage-specific log file handler before re-raising
-            logger.remove(log_id)
+            # Safely remove stage-specific log file handler before re-raising
+            try:
+                logger.remove(log_id)
+            except ValueError:
+                # Handler was already removed or doesn't exist, which is fine
+                pass
             raise
         finally:
-            # Always remove the stage-specific error log handler
-            logger.remove(log_id)
+            # Safely remove the stage-specific error log handler
+            try:
+                logger.remove(log_id)
+            except ValueError:
+                # Handler was already removed or doesn't exist, which is fine
+                pass
 
         stage_end_time: float = time.time()
         elapsed_time: float = stage_end_time - stage_start_time
