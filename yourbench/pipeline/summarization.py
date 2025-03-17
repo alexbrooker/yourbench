@@ -328,7 +328,7 @@ def run(config: Dict[str, Any]) -> None:
     logger.info("Prepared {} inference calls for summarization.", len(inference_calls))
 
     # 3) Perform summarization with timeout
-    timeout_seconds: float = stage_cfg.get("timeout_seconds", 300.0)
+    timeout_seconds: float = stage_cfg.get("timeout_seconds", 1800.0)
     response_dict = _run_inference_with_timeout(
         config=config,
         inference_calls=inference_calls,
