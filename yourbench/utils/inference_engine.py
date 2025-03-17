@@ -74,7 +74,7 @@ class InferenceCall:
     messages: List[Dict[str, str]]
     temperature: Optional[float] = None
     tags: List[str] = field(default_factory=lambda: ['dev'])
-    max_retries: int = 6
+    max_retries: int = 8
     seed: Optional[int] = None
 
 
@@ -109,6 +109,7 @@ async def _get_response(model: Model, inference_call: InferenceCall) -> str:
     )
 
     if model.inference_backend == "litellm":
+        logger.debug("Litellm inference call: {}".format(inference_call.messages))
         response = await litellm.acompletion(
             model=f"{model.request_style}/{model.model_name}",
             base_url=model.base_url,
@@ -119,6 +120,7 @@ async def _get_response(model: Model, inference_call: InferenceCall) -> str:
             timeout=GLOBAL_TIMEOUT
         )
     elif model.inference_backend == "hf_hub":
+        logger.debug("HF Hub inference call: {}".format(inference_call.messages))
         # make the client first
         # TODO: support langfuse logging with hf_hub
         client = AsyncInferenceClient(
@@ -143,7 +145,7 @@ async def _get_response(model: Model, inference_call: InferenceCall) -> str:
         "END _get_response: model='{}'  (timestamp={:.4f}, duration={:.2f}s)",
         model.model_name, finish_time, (finish_time - start_time)
     )
-    logger.trace("Response content from model {} = {}", model.model_name, response.choices[0].message.content)
+    logger.debug("Response content from model {} = {}", model.model_name, response.choices[0].message.content)
     return response.choices[0].message.content
 
 
