@@ -71,7 +71,7 @@ class SingleHopQuestionRow:
         self_assessed_question_type: A descriptor for the type or style of question.
         generating_model: The model used to generate this question.
         thought_process: Free-form text describing how the question was derived or the
-            model’s chain-of-thought (if provided).
+            model's chain-of-thought (if provided).
     """
     chunk_id: str
     document_id: str
@@ -287,7 +287,8 @@ def run(config: Dict[str, Any]) -> None:
                     )
                     continue
 
-                question_text = pair.get("question", "").strip()
+                question_text = pair.get("question") or ""
+                question_text = question_text.strip()
                 if not question_text:
                     logger.debug(
                         "Empty question found; skipping. row_index={}, chunk_id={}", 
