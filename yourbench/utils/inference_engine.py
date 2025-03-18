@@ -22,7 +22,7 @@ from tqdm.asyncio import tqdm_asyncio
 
 load_dotenv()
 
-GLOBAL_TIMEOUT = 1800
+GLOBAL_TIMEOUT = 3600
 
 # TODO: why do we need these lines
 # Optional: Customize success/failure callbacks
@@ -67,7 +67,7 @@ class Model:
     max_concurrent_requests: int = 8
     inference_backend: str = "litellm"
     provider: str = None
-
+    api_version: str = None
 
 @dataclass
 class InferenceCall:
@@ -114,6 +114,7 @@ async def _get_response(model: Model, inference_call: InferenceCall) -> str:
             model=f"{model.request_style}/{model.model_name}",
             base_url=model.base_url,
             api_key=model.api_key,
+            api_version=str(model.api_version),
             messages=inference_call.messages,
             temperature=inference_call.temperature,
             metadata={"tags": inference_call.tags},
