@@ -72,6 +72,7 @@ class SingleHopQuestionRow:
         generating_model: The model used to generate this question.
         thought_process: Free-form text describing how the question was derived or the
             model's chain-of-thought (if provided).
+        raw_response: The full, unedited response from the model.
     """
     chunk_id: str
     document_id: str
@@ -81,6 +82,7 @@ class SingleHopQuestionRow:
     self_assessed_question_type: str
     generating_model: str
     thought_process: str
+    raw_response: str
 
 
 def run(config: Dict[str, Any]) -> None:
@@ -329,7 +331,8 @@ def run(config: Dict[str, Any]) -> None:
                     estimated_difficulty=difficulty_val,
                     self_assessed_question_type=question_type,
                     generating_model=model_name,
-                    thought_process=thought_process
+                    thought_process=thought_process,
+                    raw_response=raw_response
                 )
                 question_dataset_rows.append(question_row.__dict__)
 
