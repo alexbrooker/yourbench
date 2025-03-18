@@ -1,19 +1,9 @@
 import os
 import glob
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 
 from loguru import logger
 from markitdown import MarkItDown
-
-# If you have a custom OpenAI/OpenRouter Python client, import here.
-# For demonstration, we use "openai.OpenAI" as a placeholder.
-# If you have a different library or custom code, adjust accordingly.
-try:
-    from openai import OpenAI
-except ImportError:
-    logger.warning("Could not import 'openai.OpenAI'. Please ensure it's installed if you need LLM features.")
-    OpenAI = None  # Fallback if library isn't installed
-
 
 def run(config: Dict[str, Any]) -> None:
     """
@@ -25,34 +15,8 @@ def run(config: Dict[str, Any]) -> None:
       2. For each file, convert it to Markdown using MarkItDown.
       3. Save the output (.md) to the output_dir.
 
-    If an LLM is specified in the configuration (through model_roles and model_list),
-    MarkItDown can use this LLM for advanced conversions (e.g., generating image captions).
-
     Parameters:
         config (Dict[str, Any]): A dictionary containing overall pipeline configuration.
-                                 Expected structure:
-                                 {
-                                   "pipeline": {
-                                     "ingestion": {
-                                       "source_documents_dir": str,
-                                       "output_dir": str,
-                                       "run": bool
-                                     }
-                                   },
-                                   "model_roles": {
-                                     "ingestion": [list_of_model_keys_for_ingestion]
-                                   },
-                                   "model_list": [
-                                     {
-                                       "model_name": str,
-                                       "provider": str,
-                                       "base_url": str,
-                                       "api_key": str
-                                     },
-                                     ...
-                                   ]
-                                 }
-
     Returns:
         None
     """
@@ -78,7 +42,7 @@ def run(config: Dict[str, Any]) -> None:
     logger.debug("Ensured output directory exists: {}", output_dir)
 
     # (Optional) Resolve a model for advanced image descriptions, etc. 
-    md = _initialize_markitdown_with_llm(config)
+    md = MarkItDown()
 
     # Convert each file in the source directory 
     file_paths = glob.glob(os.path.join(source_dir, "**"), recursive=True)
@@ -92,35 +56,11 @@ def run(config: Dict[str, Any]) -> None:
         output_dir
     )
 
-    for fp in file_paths:
-        if os.path.isfile(fp):
-            _convert_file(fp, output_dir, md)
+    for file in file_paths:
+        if os.path.isfile(file):
+            _convert_file(file, output_dir, md)
 
     logger.success("Ingestion complete. Processed files from '{}' to '{}'.", source_dir, output_dir)
-
-
-def _initialize_markitdown_with_llm(config: Dict[str, Any]) -> MarkItDown:
-    ingestion_roles = config.get("model_roles", {}).get("ingestion", [])
-    model_list = config.get("model_list", [])
-
-    if not ingestion_roles or not model_list:
-        logger.debug("No LLM configuration found for ingestion. Using default MarkItDown.")
-        return MarkItDown()
-
-    matched_model_config = next((m for m in model_list if m["model_name"] in ingestion_roles), None)
-
-    if not matched_model_config:
-        logger.debug("No matching LLM config found. Using default MarkItDown.")
-        return MarkItDown()
-
-    if OpenAI is None:
-        logger.warning("OpenAI client library not found. Using default MarkItDown.")
-        return MarkItDown()
-
-    llm_client = OpenAI(api_key=os.path.expandvars(matched_model_config.get("api_key", "")),
-                        base_url=matched_model_config.get("base_url", ""))
-    
-    return MarkItDown(llm_client=llm_client, llm_model=matched_model_config["model_name"])
 
 
 def _convert_file(file_path: str, output_dir: str, md: MarkItDown) -> None:
