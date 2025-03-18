@@ -46,7 +46,7 @@ Important Notes:
 ----------------
 - This stage relies on the `run_inference` utility function from yourbench.utils.inference_engine
   for concurrency, timeouts, and model management.
-- Summaries are extracted from the model’s output by parsing <final_summary> XML tags.
+- Summaries are extracted from the model's output by parsing <final_summary> XML tags.
 - If no valid summary is found, the pipeline substitutes a fallback string.
 
 See Also:
@@ -232,7 +232,25 @@ def _run_inference_with_timeout(
     with ThreadPoolExecutor(max_workers=1) as executor:
         future = executor.submit(run_inference, config, stage_name, inference_calls)
         try:
-            return future.result(timeout=timeout_seconds)
+            result = future.result(timeout=timeout_seconds)
+            if result is None or not isinstance(result, dict):
+                logger.error("Inference returned None or invalid result type: {}", type(result))
+                return None
+                
+            # Check if the result dictionary is empty
+            if not result:
+                logger.error("Inference returned an empty dictionary")
+                return None
+                
+            # Check if any model returned empty response list
+            for model_name, responses in result.items():
+                if not responses:
+                    logger.warning("Model '{}' returned empty response list", model_name)
+                else:
+                    logger.info("Received {} responses from model '{}'", len(responses), model_name)
+                    
+            return result
+            
         except FuturesTimeoutError:
             logger.error("Inference timed out after {} seconds.", timeout_seconds)
         except Exception as exc:
@@ -268,7 +286,7 @@ def run(config: Dict[str, Any]) -> None:
     This stage:
       1. Loads a dataset of documents from the configuration.
       2. Uses one or more summarization models to generate summaries for each doc.
-      3. Attempts to parse each model’s output for <final_summary> tags.
+      3. Attempts to parse each model's output for <final_summary> tags.
       4. Optionally (in debug mode) computes corpus-level metrics (BLEU, METEOR,
          ROUGE, BERTScore).
       5. Logs results and saves updated columns in the dataset.
@@ -323,7 +341,7 @@ def run(config: Dict[str, Any]) -> None:
     for idx, doc_text in enumerate(documents):
         user_msg_content = SUMMARIZATION_USER_PROMPT.format(document=doc_text)
         user_msg = {"role": "user", "content": user_msg_content}
-        inference_calls.append(InferenceCall(messages=[user_msg]))
+        inference_calls.append(InferenceCall(messages=[user_msg], tags=["summarization"]))
 
     logger.info("Prepared {} inference calls for summarization.", len(inference_calls))
 
@@ -335,10 +353,14 @@ def run(config: Dict[str, Any]) -> None:
         stage_name="summarization",
         timeout_seconds=timeout_seconds
     )
-    if response_dict is None or not response_dict:
+    if response_dict is None:
         logger.error("Inference for summarization returned no data.")
         return
-
+    
+    if not response_dict:
+        logger.error("Inference returned an empty dictionary. This could indicate a configuration issue with models for the summarization stage.")
+        return
+    
     # 4) Gather model responses
     #    By design, we typically have a single summarization model. If multiple
     #    are used, the pipeline can store them all, but we only pick the first
@@ -346,6 +368,11 @@ def run(config: Dict[str, Any]) -> None:
     try:
         summ_model_name = list(response_dict.keys())[0]
         model_raw_summaries: List[str] = response_dict.get(summ_model_name, [])
+        
+        if not model_raw_summaries:
+            logger.error("Model '{}' returned no summaries. Check your model configuration.", summ_model_name)
+            return
+            
     except IndexError:
         logger.error("No valid model keys found in the response dictionary.")
         return
