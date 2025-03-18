@@ -1,0 +1,74 @@
+hf_configuration:
+  token: $HF_TOKEN
+  private: true
+  hf_organization: $HF_ORGANIZATION
+  hf_dataset_name: debug_test
+
+local_dataset_dir: results/
+
+model_list:
+  - model_name: Qwen/Qwen2.5-72B-Instruct
+    provider: sambanova
+    api_key: $MODEL_API_KEY
+    max_concurrent_requests: 32
+
+model_roles:
+  ingestion:
+    - Qwen/Qwen2.5-72B-Instruct
+  summarization:
+    - Qwen/Qwen2.5-72B-Instruct
+  single_shot_question_generation:
+    - Qwen/Qwen2.5-72B-Instruct
+  multi_hop_question_generation:
+    - Qwen/Qwen2.5-72B-Instruct
+  answer_generation:
+    - Qwen/Qwen2.5-72B-Instruct
+  judge_answers:
+    - Qwen/Qwen2.5-72B-Instruct
+
+pipeline:
+  ingestion:
+    source_documents_dir: data/example/raw
+    output_dir: data/example/ingested
+    run: true
+
+  upload_ingest_to_hub:
+    source_documents_dir: data/example/ingested
+    run: true
+
+  summarization:
+    run: true
+
+  chunking:
+    chunking_configuration:
+      l_min_tokens: 64
+      l_max_tokens: 128
+      tau_threshold: 0.3
+      h_min: 2
+      h_max: 4
+    run: true
+
+  single_shot_question_generation:
+    diversification_seed: "24 year old adult"
+    run: true
+
+  multi_hop_question_generation:
+    run: true
+
+  answer_generation:
+    question_type: single_shot # or multi_hop
+    run: true
+    strategies:
+      - name: "zeroshot"
+        prompt: "ZEROSHOT_QA_USER_PROMPT"
+        model_name: "Qwen/Qwen2.5-72B-Instruct"
+      - name: "gold"
+        prompt: "GOLD_QA_USER_PROMPT"
+        model_name: "Qwen/Qwen2.5-72B-Instruct"
+
+  judge_answers:
+    run: true
+    comparing_strategies:
+      - ["zeroshot", "gold"]
+    chunk_column_index: 0
+    random_seed: 42
