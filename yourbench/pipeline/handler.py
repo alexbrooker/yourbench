@@ -45,7 +45,8 @@ DEFAULT_STAGE_ORDER: List[str] = [
     "single_shot_question_generation",
     "multi_hop_question_generation",
     "deduplicate_single_shot_questions",
-    "deduplicate_multi_hop_questions"
+    "deduplicate_multi_hop_questions",
+    "lighteval"
 ]
 
 # This global list tracks the timing for all executed stages in the pipeline.
