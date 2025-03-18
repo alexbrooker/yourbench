@@ -1,25 +1,30 @@
 [project]
 name = "yourbench"
 version = "0.2.0"
+authors = [
+    { name = "Sumuk Shashidhar", email = "sumuks2@illinois.edu" },
+    { name = "Alina Lozovskaia", email = "alina.lozovskaia@huggingface.co" },
+    { name = "Clémentine Fourrier", email = "clementine@huggingface.co" },
+]
 description = "Dynamic Evaluation Set Generation with Large Language Models"
 readme = "README.md"
 requires-python = ">=3.12, <3.13"
 dependencies = [
     "asyncio>=3.4.3",
     "black>=25.1.0",
-    "datasets>=3.3.0",
-    "gradio>=5.16.0",
+    "datasets>=3.4.1",
+    "gradio>=5.21.0",
     "hf-transfer>=0.1.9",
+    "huggingface-hub[inference]>=0.28.1",
     "langfuse>=2.59.3",
-    "litellm>=1.61.16",
     "loguru>=0.7.3",
-    "markitdown>=0.0.2",
+    "markitdown[docx,pdf,pptx]>=0.0.2",
     "matplotlib>=3.10.0",
-    "openai>=1.63.0",
     "python-dotenv>=1.0.1",
+    "ruff>=0.9.6",
     "torch>=2.6.0",
     "tqdm>=4.67.1",
-    "transformers>=4.48.3",
+    "transformers>=4.49.0",
 ]
 
 [project.scripts]
@@ -31,3 +36,23 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 include = ["yourbench*"]
+ 
+[tool.ruff]
+line-length = 119
+exclude = ["**/*.ipynb"]
+
+lint.ignore = ["E501", "C901", "F841"]
+lint.select = ["C", "E", "F", "I", "W"]
+lint.fixable = ["A", "B", "C", "D", "E", "F", "I", "W"]
+preview = true
+
+[tool.ruff.lint.isort]
+lines-after-imports = 2
+known-first-party = ["yourbench"]
+split-on-trailing-comma = true
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
