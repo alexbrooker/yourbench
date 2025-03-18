@@ -288,7 +288,7 @@ def run(config: Dict[str, Any]) -> None:
                     continue
 
                 question_text = pair.get("question") or ""
-                question_text = question_text.strip()
+                question_text = question_text.strip() if isinstance(question_text, str) else str(question_text).strip()
                 if not question_text:
                     logger.debug(
                         "Empty question found; skipping. row_index={}, chunk_id={}", 
@@ -296,19 +296,26 @@ def run(config: Dict[str, Any]) -> None:
                     )
                     continue
 
-                self_answer = pair.get("answer", "").strip()
+                # Handle potential non-string answers
+                answer_raw = pair.get("answer", "")
+                self_answer = answer_raw.strip() if isinstance(answer_raw, str) else str(answer_raw).strip()
 
+                # Handle potential non-int difficulty
                 difficulty_raw = pair.get("estimated_difficulty", 5)
                 try:
                     difficulty_val = int(difficulty_raw)
                 except (ValueError, TypeError):
                     logger.warning("Invalid estimated_difficulty '{}', defaulting to 5", difficulty_raw)
                     difficulty_val = 5
+                # Ensure difficulty is in range 1-10
+                difficulty_val = max(1, min(10, difficulty_val))
 
+                # Ensure question_type is a string
                 question_type = pair.get("question_type", "unknown")
                 if not isinstance(question_type, str):
                     question_type = str(question_type)
 
+                # Ensure thought_process is a string
                 thought_process = pair.get("thought_process", "")
                 if not isinstance(thought_process, str):
                     thought_process = str(thought_process)
@@ -369,10 +376,16 @@ def _extract_tag_content(text: str, tag: str) -> str:
     Returns:
         str: The extracted content within <tag> ... </tag>, or empty if none found.
     """
-    pattern = fr"<{tag}\s*>([\s\S]*?)</{tag}>"
-    match = re.search(pattern, text)
-    if match:
-        return match.group(1).strip()
+    if not text or not isinstance(text, str):
+        return ""
+    
+    try:
+        pattern = fr"<{tag}\s*>([\s\S]*?)</{tag}>"
+        match = re.search(pattern, text)
+        if match:
+            return match.group(1).strip()
+    except Exception as e:
+        logger.debug("Error extracting tag content for tag '{}': {}", tag, e)
     return ""
 
 
@@ -387,22 +400,29 @@ def _extract_output_json(raw_response: str) -> str:
     Returns:
         str: The JSON content as a string, or an empty string if not found.
     """
-    # Check for <output_json> block first
-    extracted = _extract_tag_content(raw_response, "output_json")
-    if extracted.strip():
-        sanitized = _maybe_strip_triple_backticks(extracted)
-        if sanitized.strip():
-            return sanitized
+    if not raw_response or not isinstance(raw_response, str):
+        return ""
+        
+    try:
+        # Check for <output_json> block first
+        extracted = _extract_tag_content(raw_response, "output_json")
+        if extracted and extracted.strip():
+            sanitized = _maybe_strip_triple_backticks(extracted)
+            if sanitized and sanitized.strip():
+                return sanitized
 
-    # Check for ```json fenced code block
-    fenced_pattern = r"```json\s*([\s\S]*?)\s*```"
-    fenced_match = re.search(fenced_pattern, raw_response)
-    if fenced_match:
-        return fenced_match.group(1).strip()
+        # Check for ```json fenced code block
+        fenced_pattern = r"```json\s*([\s\S]*?)\s*```"
+        fenced_match = re.search(fenced_pattern, raw_response)
+        if fenced_match:
+            return fenced_match.group(1).strip()
 
-    # Fallback bracket-based extraction
-    fallback_candidates = _best_effort_json_extract(raw_response)
-    return fallback_candidates[0] if fallback_candidates else ""
+        # Fallback bracket-based extraction
+        fallback_candidates = _best_effort_json_extract(raw_response)
+        return fallback_candidates[0] if fallback_candidates else ""
+    except Exception as e:
+        logger.debug("Error extracting JSON from response: {}", e)
+        return ""
 
 
 def _maybe_strip_triple_backticks(text_in: str) -> str:
@@ -416,10 +436,16 @@ def _maybe_strip_triple_backticks(text_in: str) -> str:
     Returns:
         str: The unwrapped text or the original string if no wrapping was found.
     """
-    pattern = r"^\s*```(?:json)?\s*([\s\S]*?)\s*```$"
-    match = re.match(pattern, text_in)
-    if match:
-        return match.group(1)
+    if not text_in or not isinstance(text_in, str):
+        return ""
+        
+    try:
+        pattern = r"^\s*```(?:json)?\s*([\s\S]*?)\s*```$"
+        match = re.match(pattern, text_in)
+        if match:
+            return match.group(1)
+    except Exception as e:
+        logger.debug("Error stripping backticks: {}", e)
     return text_in
 
 
@@ -434,11 +460,17 @@ def _best_effort_json_extract(full_text: str) -> List[str]:
     Returns:
         List[str]: A list of candidate JSON strings. May be empty if none found.
     """
-    pattern = r"([\[{].*?[\]}])"
-    matches = re.findall(pattern, full_text, flags=re.DOTALL)
+    if not full_text or not isinstance(full_text, str):
+        return []
+        
     candidates = []
-    for match_str in matches:
-        if (match_str.startswith("[") and match_str.endswith("]")) or \
-           (match_str.startswith("{") and match_str.endswith("}")):
-            candidates.append(match_str.strip())
+    try:
+        pattern = r"([\[{].*?[\]}])"
+        matches = re.findall(pattern, full_text, flags=re.DOTALL)
+        for match_str in matches:
+            if (match_str.startswith("[") and match_str.endswith("]")) or \
+               (match_str.startswith("{") and match_str.endswith("}")):
+                candidates.append(match_str.strip())
+    except Exception as e:
+        logger.debug("Error in best effort JSON extraction: {}", e)
     return candidates

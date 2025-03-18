@@ -312,7 +312,8 @@ def run(config: Dict[str, Any]) -> None:
                 # Construct final question data for each QA pair
                 for qap in question_answer_list:
                     try:
-                        question_text = qap.get("question", "").strip()
+                        question_text = qap.get("question", "")
+                        question_text = question_text.strip() if isinstance(question_text, str) else str(question_text).strip()
                         if not question_text:
                             logger.debug(
                                 "Empty question found for row={}, doc_id={}, skipping pair.",
@@ -320,7 +321,11 @@ def run(config: Dict[str, Any]) -> None:
                             )
                             continue
 
-                        self_answer = qap.get("answer", "").strip()
+                        # Handle potential non-string answers
+                        answer_raw = qap.get("answer", "")
+                        self_answer = answer_raw.strip() if isinstance(answer_raw, str) else str(answer_raw).strip()
+
+                        # Handle potential non-int difficulty
                         diff_raw = qap.get("estimated_difficulty", 5)
                         try:
                             diff_val = int(diff_raw)
@@ -330,11 +335,15 @@ def run(config: Dict[str, Any]) -> None:
                                 diff_raw, doc_id
                             )
                             diff_val = 5
+                        # Ensure difficulty is in range 1-10
+                        diff_val = max(1, min(10, diff_val))
 
+                        # Ensure question_type is a string
                         qtype = qap.get("question_type", "unknown")
                         if not isinstance(qtype, str):
                             qtype = str(qtype)
 
+                        # Ensure thought_process is a string
                         thought_process = qap.get("thought_process", "")
                         if not isinstance(thought_process, str):
                             thought_process = str(thought_process)
@@ -346,6 +355,9 @@ def run(config: Dict[str, Any]) -> None:
                                 doc_id
                             )
                             cits = []
+                            
+                        # Ensure all citation items are strings
+                        cits = [str(c) for c in cits]
 
                         row_obj = MultiHopQuestionRow(
                             document_id=doc_id,
@@ -415,9 +427,17 @@ def _extract_tag_content(text: str, tag: str) -> str:
         str: The content found between <tag>...</tag>. 
              Returns an empty string if not found or parsing fails.
     """
-    pattern = fr"<{tag}\s*>([\s\S]*?)</{tag}>"
-    match = re.search(pattern, text)
-    return match.group(1).strip() if match else ""
+    if not text or not isinstance(text, str):
+        return ""
+    
+    try:
+        pattern = fr"<{tag}\s*>([\s\S]*?)</{tag}>"
+        match = re.search(pattern, text)
+        if match:
+            return match.group(1).strip()
+    except Exception as e:
+        logger.debug("Error extracting tag content for tag '{}': {}", tag, e)
+    return ""
 
 
 def _extract_output_json(raw_response: str) -> str:
@@ -432,22 +452,29 @@ def _extract_output_json(raw_response: str) -> str:
     Returns:
         str: A JSON string if found, or an empty string otherwise.
     """
-    # Priority 1: <output_json> block
-    extracted = _extract_tag_content(raw_response, "output_json")
-    if extracted.strip():
-        sanitized = _maybe_strip_triple_backticks(extracted)
-        if sanitized.strip():
-            return sanitized
+    if not raw_response or not isinstance(raw_response, str):
+        return ""
+        
+    try:
+        # Priority 1: <output_json> block
+        extracted = _extract_tag_content(raw_response, "output_json")
+        if extracted and extracted.strip():
+            sanitized = _maybe_strip_triple_backticks(extracted)
+            if sanitized and sanitized.strip():
+                return sanitized
 
-    # Priority 2: ```json fenced code block
-    fence_pattern = r"```json\s*([\s\S]*?)\s*```"
-    fence_match = re.search(fence_pattern, raw_response)
-    if fence_match:
-        return fence_match.group(1).strip()
+        # Priority 2: ```json fenced code block
+        fence_pattern = r"```json\s*([\s\S]*?)\s*```"
+        fence_match = re.search(fence_pattern, raw_response)
+        if fence_match:
+            return fence_match.group(1).strip()
 
-    # Priority 3: Best effort bracket-based extraction
-    fallback_candidates = _best_effort_json_extract(raw_response)
-    return fallback_candidates[0] if fallback_candidates else ""
+        # Priority 3: Best effort bracket-based extraction
+        fallback_candidates = _best_effort_json_extract(raw_response)
+        return fallback_candidates[0] if fallback_candidates else ""
+    except Exception as e:
+        logger.debug("Error extracting JSON from response: {}", e)
+        return ""
 
 
 def _maybe_strip_triple_backticks(text_in: str) -> str:
@@ -460,10 +487,16 @@ def _maybe_strip_triple_backticks(text_in: str) -> str:
     Returns:
         str: The text without enclosing triple backticks, or the original text.
     """
-    pattern = r"^\s*```(?:json)?\s*([\s\S]*?)\s*```$"
-    m = re.match(pattern, text_in)
-    if m:
-        return m.group(1)
+    if not text_in or not isinstance(text_in, str):
+        return ""
+        
+    try:
+        pattern = r"^\s*```(?:json)?\s*([\s\S]*?)\s*```$"
+        m = re.match(pattern, text_in)
+        if m:
+            return m.group(1)
+    except Exception as e:
+        logger.debug("Error stripping backticks: {}", e)
     return text_in
 
 
@@ -480,11 +513,17 @@ def _best_effort_json_extract(full_text: str) -> List[str]:
     Returns:
         List[str]: A list of bracket-delimited substrings that might be valid JSON.
     """
-    pattern = r"([\[{].*?[\]}])"
-    matches = re.findall(pattern, full_text, flags=re.DOTALL)
+    if not full_text or not isinstance(full_text, str):
+        return []
+        
     candidates = []
-    for match_text in matches:
-        if (match_text.startswith("[") and match_text.endswith("]")) or \
-           (match_text.startswith("{") and match_text.endswith("}")):
-            candidates.append(match_text.strip())
+    try:
+        pattern = r"([\[{].*?[\]}])"
+        matches = re.findall(pattern, full_text, flags=re.DOTALL)
+        for match_text in matches:
+            if (match_text.startswith("[") and match_text.endswith("]")) or \
+               (match_text.startswith("{") and match_text.endswith("}")):
+                candidates.append(match_text.strip())
+    except Exception as e:
+        logger.debug("Error in best effort JSON extraction: {}", e)
     return candidates

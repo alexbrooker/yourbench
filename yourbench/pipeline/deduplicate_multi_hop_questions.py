@@ -49,6 +49,7 @@ from datasets import Dataset
 from sklearn.cluster import DBSCAN
 import torch.nn.functional as F
 from transformers import AutoTokenizer, AutoModel
+import os
 
 from yourbench.utils.dataset_engine import (
     smart_load_dataset,
@@ -56,6 +57,10 @@ from yourbench.utils.dataset_engine import (
     smart_get_output_subset,
     save_dataset
 )
+
+# Set OpenBLAS thread limit to avoid memory issues
+os.environ['OPENBLAS_NUM_THREADS'] = '4'
+os.environ['MKL_NUM_THREADS'] = '4'
 
 # === Data Loading & Embedding ===
 
@@ -205,12 +210,31 @@ def _find_centroid(embeds: np.ndarray, idx_list: List[int]) -> int:
 
 def _pairwise_euclidean(x: np.ndarray) -> np.ndarray:
     """
-    Compute pairwise Euclidean distance among rows in x.
+    Compute pairwise Euclidean distance among rows in x using a memory-efficient approach.
     x shape: (N, dim)
     output shape: (N, N)
     """
-    dot = x @ x.T
-    norm_sq = np.sum(x**2, axis=1, keepdims=True)
-    dists = norm_sq + norm_sq.T - 2 * dot
-    dists[dists < 0] = 0
-    return np.sqrt(dists)
+    # Process in chunks to avoid memory issues
+    chunk_size = 1000
+    n_samples = x.shape[0]
+    dists = np.zeros((n_samples, n_samples))
+    
+    for i in range(0, n_samples, chunk_size):
+        end_i = min(i + chunk_size, n_samples)
+        chunk_i = x[i:end_i]
+        
+        for j in range(i, n_samples, chunk_size):
+            end_j = min(j + chunk_size, n_samples)
+            chunk_j = x[j:end_j]
+            
+            # Compute distances for this chunk pair
+            chunk_dists = np.zeros((end_i - i, end_j - j))
+            for k in range(chunk_i.shape[0]):
+                diff = chunk_j - chunk_i[k]
+                chunk_dists[k] = np.sqrt(np.sum(diff * diff, axis=1))
+            
+            dists[i:end_i, j:end_j] = chunk_dists
+            if i != j:
+                dists[j:end_j, i:end_i] = chunk_dists.T
+    
+    return dists
