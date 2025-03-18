@@ -24,6 +24,7 @@ dependencies = [
     "rich>=13.7.0",
     "rouge-score>=0.1.2",
     "scikit-learn>=1.6.1",
+    "seaborn>=0.13.2",
     "textstat>=0.7.5",
     "torch>=2.6.0",
     "tqdm>=4.67.1",

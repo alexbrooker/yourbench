@@ -79,10 +79,6 @@ It will let you interactively explore your pipeline stages.
 
 ![Process Flow](docs/assets/process-figure.png)
 
-# YourBench
-
-**YourBench** is an open-source framework to dynamically generate domain-specific evaluation sets (``benchmarks``) from source documents. Inspired by modern software testing practices (where automated test generation & coverage analysis revolutionized software QA), YourBench aims to automate the creation of high-quality, reliable question-answer sets for large language models (LLMs). It seamlessly integrates domain knowledge, chunking, summarization, question generation, and deduplication steps into an end-to-end pipeline.
-
 
 ## Key Features
 
