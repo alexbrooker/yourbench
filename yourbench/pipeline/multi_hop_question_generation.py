@@ -91,6 +91,8 @@ class MultiHopQuestionRow:
             Free-form text describing the model's reasoning for the question.
         citations (List[str]):
             Optional references/quotations from the combined chunks.
+        raw_response (str):
+            The full, unedited response from the model.
     """
     document_id: str
     source_chunk_ids: List[str]
@@ -101,6 +103,7 @@ class MultiHopQuestionRow:
     generating_model: str
     thought_process: str
     citations: List[str] = field(default_factory=list)
+    raw_response: str = field(default="")
 
 
 def run(config: Dict[str, Any]) -> None:
@@ -368,7 +371,8 @@ def run(config: Dict[str, Any]) -> None:
                             self_assessed_question_type=qtype,
                             generating_model=model_name,
                             thought_process=thought_process,
-                            citations=cits
+                            citations=cits,
+                            raw_response=raw_resp
                         )
                         final_multi_hop_questions.append(row_obj.__dict__)
 
