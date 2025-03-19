@@ -9,7 +9,7 @@ local_dataset_dir: results/
 model_list:
   - model_name: meta-llama/Llama-3.3-70B-Instruct
     base_url: https://endpoints.huggingface.cloud # Insert the correct one
-    api_key: $MODEL_API_KEY
+    api_key: $HF_TOKEN
     max_concurrent_requests: 32
 
 model_roles:

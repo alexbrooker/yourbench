@@ -2,14 +2,14 @@ hf_configuration:
   token: $HF_TOKEN
   private: true
   hf_organization: $HF_ORGANIZATION
-  hf_dataset_name: debug_test
+  hf_dataset_name: memory_optimised_test
 
 local_dataset_dir: results/
 
 model_list:
   - model_name: Qwen/Qwen2.5-72B-Instruct
-    provider: sambanova
-    api_key: $MODEL_API_KEY
+    provider: novita
+    api_key: $HF_TOKEN
     max_concurrent_requests: 32
 
 model_roles:
@@ -50,14 +50,14 @@ pipeline:
 
   single_shot_question_generation:
     diversification_seed: "24 year old adult"
-    run: true
+    run: false
 
   multi_hop_question_generation:
-    run: true
+    run: false
 
   answer_generation:
     question_type: single_shot # or multi_hop
-    run: true
+    run: false
     strategies:
       - name: "zeroshot"
         prompt: "ZEROSHOT_QA_USER_PROMPT"
@@ -67,7 +67,7 @@ pipeline:
         model_name: "Qwen/Qwen2.5-72B-Instruct"
 
   judge_answers:
-    run: true
+    run: false
     comparing_strategies:
       - ["zeroshot", "gold"]
     chunk_column_index: 0
