@@ -1,38 +1,3 @@
-# =====================================
-# single_shot_question_generation.py
-# =====================================
-"""
-Single-Hop Question Generation Module
-
-Refactored to:
-1) Support multiple generating models in one run.
-2) Produce a question-focused dataset with one row per generated question.
-3) Retain the option to concatenate multiple runs if desired.
-
-Configuration Example (from config["pipeline"]["single_shot_question_generation"]):
------------------------------------------------------------------------------------
-single_shot_question_generation:
-  local_dataset_path: data/example/single_shot_questions
-  diversification_seed: "24 year old adult"
-  run: true
-
-Dependencies/Assumptions:
-- The pipeline config includes a "model_roles" entry for "single_shot_question_generation"
-  listing all generating models you wish to use.
-- The run_inference(...) call returns a dict mapping each model_name to a list of responses,
-  preserving order with the "call_index_to_row_chunk" structure.
-- The question-level dataset uses the columns requested:
-  chunk_id,
-  document_id,
-  chunk_location_id,
-  diversification_seed,
-  question,
-  self_answer,
-  estimated_difficulty,
-  self_assessed_question_type,
-  generating_model
-"""
-
 import json
 import re
 from dataclasses import dataclass, field
@@ -66,31 +31,12 @@ class SingleHopQuestionRow:
     thought_process: str
 
 def run(config: Dict[str, Any]) -> None:
-    """
-    Main entry point for single-shot question generation.
-
-    Steps:
-      1. Load chunked dataset from config["pipeline"]["single_shot_question_generation"]["source_dataset_name"].
-      2. Build inference calls for each row-chunk pair. (We record row_idx, chunk_idx for reconstruction.)
-      3. Call run_inference(...) to handle all calls in parallel for all specified models.
-      4. Parse each model's responses into a question-level list of dictionaries:
-         [
-           {
-             chunk_id, document_id, chunk_location_id, diversification_seed,
-             question, self_answer, estimated_difficulty, self_assessed_question_type,
-             generating_model
-           },
-           ...
-         ]
-      5. Convert that list into a Hugging Face Dataset, then use save_dataset(...) so that
-         we can optionally concatenate with existing data and push to the hub.
-    """
     stage_cfg = config.get("pipeline", {}).get("single_shot_question_generation", {})
     if not stage_cfg.get("run", False):
         logger.info("single_shot_question_generation stage is disabled. Skipping")
         return
 
-    # === Step 1: Load the chunked dataset ===
+    # Step 1: Load the chunked dataset 
     diversification_seed = stage_cfg.get("diversification_seed", "generic_seed")
     use_multihop = stage_cfg.get("use_multihop", False)
 
@@ -132,7 +78,7 @@ def run(config: Dict[str, Any]) -> None:
         logger.warning("No chunks found. Exiting single_shot_question_generation")
         return
 
-    # === Step 2: Run inference on all calls with all models
+    # Step 2: Run inference on all calls with all models
     logger.info("Sending {} total calls to inference for single-hop QG", len(all_inference_calls))
     responses_dict = run_inference(
         config=config,
@@ -243,7 +189,7 @@ def run(config: Dict[str, Any]) -> None:
         logger.warning("No valid question rows produced. Exiting single_shot_question_generation")
         return
 
-    # === Step 4: Convert question_dataset_rows -> HF Dataset, and save
+    # Step 4: Convert question_dataset_rows -> HF Dataset, and save
     logger.info("Constructing question-level dataset with {} rows..", len(question_dataset_rows))
     question_dataset = Dataset.from_dict({
         k: [d[k] for d in question_dataset_rows]

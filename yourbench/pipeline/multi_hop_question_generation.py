@@ -1,37 +1,3 @@
-# yourbench/pipeline/multi_hop_question_generation.py
-
-"""
-Multi-Hop Question Generation Module
-
-This updated version produces a dataset where each row corresponds to a single
-multi-hop question, analogous to the single-shot question generation scenario.
-
-Key Changes:
-------------
-1. For each row in the chunked dataset, we iterate over each 'multihop_chunks' item 
-   separately instead of aggregating them all into a single prompt per row.
-2. We generate one InferenceCall per (row, multi-hop-chunk) pair.
-3. After inference, we parse each model's response into question-level rows, yielding 
-   a final dataset with one row per question (instead of a single column containing 
-   lists of Q&A).
-4. The output columns mirror single-shot question generation fields:
-   [
-   "chunk_id", 
-   "document_id", 
-   "chunk_location_id", 
-   "diversification_seed", 
-   "question", 
-   "self_answer", 
-   "estimated_difficulty", 
-   "self_assessed_question_type", 
-   "generating_model"
-   ]
-
-5. We have added more robust JSON parsing to gracefully handle malformed responses
-   from the model. This prevents the entire multi-hop generation from failing
-   when only a subset of the JSON is properly formatted.
-"""
-
 import json
 import re
 from dataclasses import dataclass, field
@@ -56,7 +22,6 @@ class MultiHopQuestionRow:
     chunk_id: str
     document_id: str
     chunk_location_id: int
-    diversification_seed: str
     question: str
     self_answer: str
     estimated_difficulty: int
@@ -67,41 +32,6 @@ class MultiHopQuestionRow:
 
 
 def run(config: Dict[str, Any]) -> None:
-    """
-    Main entry point for multi-hop question generation.
-
-    Steps:
-      1. Load the chunked dataset from config["pipeline"]["multi_hop_question_generation"]["source_dataset_name"].
-      2. Build inference calls for each row-chunk pair in 'multihop_chunks'. 
-         (We record row_idx and chunk_idx for reconstruction.)
-      3. Call run_inference(...) to handle all calls in parallel for all specified models.
-      4. Parse each model's responses into a question-level list of dictionaries, with one row per question:
-            {
-              "chunk_id", 
-              "document_id", 
-              "chunk_location_id", 
-              "diversification_seed", 
-              "question", 
-              "self_answer", 
-              "estimated_difficulty", 
-              "self_assessed_question_type", 
-              "generating_model"
-            }
-      5. Convert that list into a Hugging Face Dataset, then use save_dataset(...) 
-         so we can optionally push to the hub.
-
-    Config Example:
-      pipeline:
-        multi_hop_question_generation:
-          local_dataset_path: data/example/multi_hop_questions
-          run: true
-
-      model_roles:
-        multi_hop_question_generation:
-          - some_model_name
-          - another_model_name
-    """
-
     stage_cfg = config.get("pipeline", {}).get("multi_hop_question_generation", {})
     if not stage_cfg.get("run", False):
         logger.info("multi_hop_question_generation stage is disabled. Skipping.")
@@ -116,8 +46,6 @@ def run(config: Dict[str, Any]) -> None:
 
     all_inference_calls: List[InferenceCall] = []
     call_index_to_row_chunk: List[tuple] = []
-
-    diversification_seed = stage_cfg.get("diversification_seed", "multihop_seed")
 
     for row_idx, row in enumerate(dataset):
         doc_summary = row.get("document_summary", "No summary provided.")
@@ -195,7 +123,6 @@ def run(config: Dict[str, Any]) -> None:
                                 c_idx,
                                 doc_id,
                                 model_name,
-                                diversification_seed,
                                 question_dataset_rows
                             )
                             # If we parsed successfully, break out
@@ -212,7 +139,6 @@ def run(config: Dict[str, Any]) -> None:
                     c_idx,
                     doc_id,
                     model_name,
-                    diversification_seed,
                     question_dataset_rows
                 )
             except Exception as e:
@@ -231,7 +157,6 @@ def run(config: Dict[str, Any]) -> None:
                             c_idx,
                             doc_id,
                             model_name,
-                            diversification_seed,
                             question_dataset_rows
                         )
                         break
@@ -348,14 +273,8 @@ def _parse_and_append_rows(
     c_idx: int,
     doc_id: str,
     model_name: str,
-    diversification_seed: str,
     question_dataset_rows: List[Dict[str, Any]]
 ) -> None:
-    """
-    Given a loaded JSON (list of question dictionaries), parse them and
-    append them to question_dataset_rows in the required structure.
-    This is a helper to avoid repeated code.
-    """
     if not isinstance(question_answer_pairs, list):
         logger.debug("JSON structure is not a list; skipping.")
         return
@@ -372,7 +291,6 @@ def _parse_and_append_rows(
             chunk_id=chunk_id,
             document_id=doc_id,
             chunk_location_id=c_idx,
-            diversification_seed=diversification_seed,
             question=question_text,
             self_answer=self_answer_text,
             estimated_difficulty=difficulty,

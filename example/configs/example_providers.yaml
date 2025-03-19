@@ -2,38 +2,38 @@ hf_configuration:
   token: $HF_TOKEN
   private: true
   hf_organization: $HF_ORGANIZATION
-  hf_dataset_name: debug_test
+  hf_dataset_name: example_yourbench_providers
 
-local_dataset_dir: results/
+local_dataset_dir: example/data/results
 
 model_list:
-  - model_name: meta-llama/Llama-3.3-70B-Instruct
-    base_url: https://endpoints.huggingface.cloud # Insert the correct one
+  - model_name: Qwen/Qwen2.5-72B-Instruct
+    provider: novita
     api_key: $HF_TOKEN
     max_concurrent_requests: 32
 
 model_roles:
   ingestion:
-    - meta-llama/Llama-3.3-70B-Instruct
+    - Qwen/Qwen2.5-72B-Instruct
   summarization:
-    - meta-llama/Llama-3.3-70B-Instruct
+    - Qwen/Qwen2.5-72B-Instruct
   single_shot_question_generation:
-    - meta-llama/Llama-3.3-70B-Instruct
+    - Qwen/Qwen2.5-72B-Instruct
   multi_hop_question_generation:
-    - meta-llama/Llama-3.3-70B-Instruct
+    - Qwen/Qwen2.5-72B-Instruct
   answer_generation:
-    - meta-llama/Llama-3.3-70B-Instruct
+    - Qwen/Qwen2.5-72B-Instruct
   judge_answers:
-    - meta-llama/Llama-3.3-70B-Instruct
+    - Qwen/Qwen2.5-72B-Instruct
 
 pipeline:
   ingestion:
-    source_documents_dir: data/example/raw
-    output_dir: data/example/ingested
+    source_documents_dir: example/data/raw
+    output_dir: example/data/ingested
     run: true
 
   upload_ingest_to_hub:
-    source_documents_dir: data/example/ingested
+    source_documents_dir: example/data/ingested
     run: true
 
   summarization:
@@ -49,7 +49,6 @@ pipeline:
     run: true
 
   single_shot_question_generation:
-    diversification_seed: "24 year old adult"
     run: true
 
   multi_hop_question_generation:
@@ -61,13 +60,13 @@ pipeline:
     strategies:
       - name: "zeroshot"
         prompt: "ZEROSHOT_QA_USER_PROMPT"
-        model_name: "meta-llama/Llama-3.3-70B-Instruct"
+        model_name: "Qwen/Qwen2.5-72B-Instruct"
       - name: "gold"
         prompt: "GOLD_QA_USER_PROMPT"
-        model_name: "meta-llama/Llama-3.3-70B-Instruct"
+        model_name: "Qwen/Qwen2.5-72B-Instruct"
 
   judge_answers:
-    run: true
+    run: false
     comparing_strategies:
       - ["zeroshot", "gold"]
     chunk_column_index: 0
