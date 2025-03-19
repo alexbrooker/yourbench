@@ -3,7 +3,7 @@ hf_configuration:
   token: $HF_TOKEN # you can get one from here!: https://huggingface.co/docs/huggingface_hub/en/quick-start#authentication
   hf_organization: $HF_ORGANIZATION # defaults to your HF username. You can set it to your organization name.
   private: false # true by default, set to false to make the dataset public
-  global_dataset_name: yourbench_example # name of the dataset to save the traces, and generated questions to.
+  global_dataset_name: sumuks/yourbench-example # name of the dataset to save the traces, and generated questions to.
 
 # === MODEL CONFIGURATION ===
 model_list: 
