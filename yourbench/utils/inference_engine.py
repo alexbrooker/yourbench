@@ -63,7 +63,7 @@ async def _get_response(model: Model, inference_call: InferenceCall) -> str:
         headers={"X-Request-ID": request_id},
     )
 
-    logger.info(f"Making request with ID: {request_id}")
+    logger.debug(f"Making request with ID: {request_id}")
 
     response = await client.chat_completion(
         model=model.model_name,
