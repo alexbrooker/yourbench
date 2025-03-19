@@ -172,6 +172,7 @@ def run_pipeline(config_file_path: str, debug: bool = False) -> None:
         pipeline_config=pipeline_config,
         ordered_stages=DEFAULT_STAGE_ORDER
     )
+    logger.success(f"Please visit https://huggingface.co/datasets/{config['global_dataset_name']} to view your results!")
 
 
 def _plot_pipeline_stage_timing(
