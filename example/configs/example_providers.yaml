@@ -4,7 +4,7 @@ hf_configuration:
   hf_organization: $HF_ORGANIZATION
   hf_dataset_name: example_yourbench_providers
 
-local_dataset_dir: example/data/results
+local_dataset_dir: example/data/results # Uncomment to save dataset localy
 
 model_list:
   - model_name: Qwen/Qwen2.5-72B-Instruct

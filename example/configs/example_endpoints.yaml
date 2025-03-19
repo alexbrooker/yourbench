@@ -4,7 +4,7 @@ hf_configuration:
   hf_organization: $HF_ORGANIZATION
   hf_dataset_name: example_yourbench_endpoints
 
-local_dataset_dir: example/data/results
+# local_dataset_dir: example/data/results # Uncomment to save dataset localy
 
 model_list:
   - model_name: meta-llama/Llama-3.3-70B-Instruct

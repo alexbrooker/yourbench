@@ -34,7 +34,7 @@ def custom_save_dataset(
     dataset: Dataset,
     config: Dict[str, Any],
     step_name: Optional[str] = None,
-    save_local: bool = False,
+    save_local: bool = True,
     push_to_hub: bool = True,
 ) -> None:
     """
@@ -43,7 +43,7 @@ def custom_save_dataset(
 
     dataset_repo_name = _get_full_dataset_repo_name(config)
 
-    local_dataset_dir = config["pipeline"].get("local_dataset_dir", None)
+    local_dataset_dir = config.get("local_dataset_dir", None)
     if local_dataset_dir and save_local:
         logger.info(f"Saving dataset localy to: '{local_dataset_dir}'")
         if step_name:
