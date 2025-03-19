@@ -1,8 +1,9 @@
 """
 Inference Engine For Yourbench - Now with true concurrency throttling.
 """
-import sys
+
 import time
+import uuid
 import asyncio
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass, field
@@ -15,6 +16,8 @@ from tqdm.asyncio import tqdm_asyncio
 load_dotenv()
 
 GLOBAL_TIMEOUT = 600
+
+
 @dataclass
 class Model:
     model_name: str
@@ -23,6 +26,7 @@ class Model:
     api_key: str | None = None
     max_concurrent_requests: int = 16
 
+
 @dataclass
 class InferenceCall:
     messages: List[Dict[str, str]]
@@ -30,6 +34,7 @@ class InferenceCall:
     tags: List[str] = field(default_factory=lambda: ["dev"])
     max_retries: int = 3
     seed: Optional[int] = None
+
 
 @dataclass
 class InferenceJob:
@@ -48,12 +53,17 @@ async def _get_response(model: Model, inference_call: InferenceCall) -> str:
         start_time,
     )
 
+    request_id = str(uuid.uuid4())
+
     client = AsyncInferenceClient(
         base_url=model.base_url,
         api_key=model.api_key,
         provider=model.provider,
         timeout=GLOBAL_TIMEOUT,
+        headers={"X-Request-ID": request_id},
     )
+
+    logger.info(f"Making request with ID: {request_id}")
 
     response = await client.chat_completion(
         model=model.model_name,
@@ -63,25 +73,27 @@ async def _get_response(model: Model, inference_call: InferenceCall) -> str:
 
     # Safe-guarding in case the response is missing .choices
     if not response or not response.choices:
-        logger.warning("Empty response or missing .choices from model {}", model.model_name)
+        logger.warning(
+            f"Empty response or missing .choices from model {model.model_name}"
+        )
         return ""
 
     finish_time = time.time()
     logger.debug(
-        "END _get_response: model='{}'  (timestamp={:.4f}, duration={:.2f}s)",
-        model.model_name,
-        finish_time,
-        (finish_time - start_time),
+        "END _get_response: model='{}'  (timestamp={:.4f}, duration={:.2f}s)".format(
+            model.model_name, finish_time, (finish_time - start_time)
+        )
     )
     logger.trace(
-        "Response content from model {} = {}",
-        model.model_name,
-        response.choices[0].message.content,
+        f"Response content from model {model.model_name} = {response.choices[0].message.content}"
     )
+
     return response.choices[0].message.content
 
 
-async def _retry_with_backoff(model: Model, inference_call: InferenceCall, semaphore: asyncio.Semaphore) -> str:
+async def _retry_with_backoff(
+    model: Model, inference_call: InferenceCall, semaphore: asyncio.Semaphore
+) -> str:
     """
     Attempt to get the model's response with a simple exponential backoff,
     while respecting the concurrency limit via 'semaphore'.
@@ -110,7 +122,9 @@ async def _retry_with_backoff(model: Model, inference_call: InferenceCall, semap
         # Only sleep if not on the last attempt
         if attempt < inference_call.max_retries - 1:
             backoff_secs = 2 ** (attempt + 2)
-            logger.debug("Backing off for {} seconds before next attempt...", backoff_secs)
+            logger.debug(
+                "Backing off for {} seconds before next attempt...", backoff_secs
+            )
             await asyncio.sleep(backoff_secs)
 
     logger.critical(
@@ -193,7 +207,9 @@ def _load_models(base_config: Dict[str, Any], step_name: str) -> List[Model]:
     all_configured_models = base_config.get("model_list", [])
     role_models = base_config["model_roles"].get(step_name, [])
     # Filter out only those with a matching 'model_name'
-    matched = [Model(**m) for m in all_configured_models if m["model_name"] in role_models]
+    matched = [
+        Model(**m) for m in all_configured_models if m["model_name"] in role_models
+    ]
     logger.info(
         "Found {} models in config for step '{}': {}",
         len(matched),
@@ -219,7 +235,9 @@ def run_inference(
     # 1. Load relevant models for the pipeline step
     models = _load_models(config, step_name)
     if not models:
-        logger.warning("No models found for step '{}'. Returning empty dictionary.", step_name)
+        logger.warning(
+            "No models found for step '{}'. Returning empty dictionary.", step_name
+        )
         return {}
 
     # 2. Run the concurrency-enabled async helper
