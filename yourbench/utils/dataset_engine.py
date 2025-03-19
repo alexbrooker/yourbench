@@ -34,7 +34,7 @@ def custom_save_dataset(
     dataset: Dataset,
     config: Dict[str, Any],
     step_name: Optional[str] = None,
-    save_local: bool = True,
+    save_local: bool = False,
     push_to_hub: bool = True,
 ) -> None:
     """
