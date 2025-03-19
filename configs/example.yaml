@@ -20,6 +20,18 @@ model_list:
   - model_name: claude-3-7-sonnet-20250219
     request_style: anthropic
     api_key: $ANTHROPIC_API_KEY
+  
+  # to use deepseek inference
+  - model_name: deepseek-chat
+    request_style: openai
+    base_url: $DEEPSEEK_API_BASE
+    api_key: $DEEPSEEK_API_KEY
+  
+  # to use local inference with vLLM
+  - model_name: your_model_here
+    base_url: http://localhost:8000/v1
+    max_concurrent_requests: 128 # optional, defaults to 8
+    
 
 
 model_roles:
