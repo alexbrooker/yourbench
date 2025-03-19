@@ -64,7 +64,7 @@ def run(config: Dict[str, Any]) -> None:
                 title=title,
                 document_summary=doc_summary,
                 text_chunk=chunk_text,
-                additional_instructions=stage_cfg.get("additional_instructions", "undergraduate")
+                additional_instructions=stage_cfg.get("additional_instructions", "Generate questions that are appropriate for undergraduate students.")
             )
             user_message = {"role": "user", "content": user_content}
             inference_call = InferenceCall(
