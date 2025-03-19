@@ -17,7 +17,10 @@ References (from your paper):
 import os
 import random
 import torch
+import multiprocessing
 import matplotlib.pyplot as plt
+
+from torch.amp import autocast
 
 from typing import Dict, Any, List
 from loguru import logger
@@ -28,39 +31,16 @@ import torch.nn.functional as F
 from yourbench.utils.dataset_engine import custom_load_dataset
 from yourbench.utils.dataset_engine import custom_save_dataset
 
-# === GLOBALS ===
+# Parallel Processing 
+torch.set_num_threads(multiprocessing.cpu_count())
+
+# GLOBALS 
 E5_MODEL_NAME = "intfloat/multilingual-e5-large-instruct"
 os.makedirs("plots", exist_ok=True)  # Ensure plots folder exists for saving graphs
 
 def run(config: Dict[str, Any]) -> None:
     """
-    Run the chunking stage of the pipeline.
-
-    This function:
-      1. Loads the source dataset from Hugging Face using `custom_load_dataset`.
-      2. Retrieves the chunking parameters (l_min_tokens, l_max_tokens, tau_threshold, etc.) from config.
-      3. For each document:
-         - Splits it into sentences.
-         - Computes embeddings for each sentence via the E5 model.
-         - Calculates consecutive sentence similarities.
-         - Determines chunk boundaries based on l_min_tokens, l_max_tokens, and tau_threshold.
-         - Generates a plot of the consecutive similarities and saves it to plots/.
-      4. Optionally builds multi-hop chunks by sampling subsets of the single-hop chunks.
-      5. Appends 'chunks' and 'multihop_chunks' columns to the dataset and saves it via `save_dataset`.
-
-    Configuration Example:
-        pipeline:
-          chunking:
-            chunking_configuration:
-              l_min_tokens: 256
-              l_max_tokens: 1024
-              tau_threshold: 0.3
-              h_min: 2
-              h_max: 4
-            run: true
-
-    Args:
-        config (Dict[str, Any]): Dictionary containing pipeline configuration.
+    Run the chunking stage of the pipeline
     """
     chunking_cfg = config.get("pipeline", {}).get("chunking", {})
     if not chunking_cfg.get("run", False):
@@ -69,10 +49,10 @@ def run(config: Dict[str, Any]) -> None:
 
     logger.info("Running chunking stage with E5 embeddings...")
 
-    # === Step 1: Load dataset ===
+    # Step 1: Load dataset 
     dataset = custom_load_dataset(config=config, step_name="summarization")
 
-    # === Step 2: Retrieve chunking parameters ===
+    # Step 2: Retrieve chunking parameters 
     cparams = chunking_cfg.get("chunking_configuration", {})
     l_min_tokens = cparams.get("l_min_tokens", 256)
     l_max_tokens = cparams.get("l_max_tokens", 1024)
@@ -86,12 +66,12 @@ def run(config: Dict[str, Any]) -> None:
         l_min_tokens, l_max_tokens, tau_threshold, h_min, h_max
     )
 
-    # === Load E5 model/tokenizer once (GPU-accelerated if available) ===
+    # Load E5 model/tokenizer once (GPU-accelerated if available) 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     tokenizer = AutoTokenizer.from_pretrained(E5_MODEL_NAME)
     model = AutoModel.from_pretrained(E5_MODEL_NAME).to(device).eval()
 
-    # === Step 3: Perform chunking on each row (document) ===
+    # Step 3: Perform chunking on each row (document) 
     all_single_hop_chunks = []
     all_multihop_chunks = []
 
@@ -112,27 +92,22 @@ def run(config: Dict[str, Any]) -> None:
             all_multihop_chunks.append([])
             continue
 
-        # === 3A: Compute embeddings for each sentence ===
+        # 3A: Compute embeddings for each sentence 
         # E5 does not require instructions for the document side
         # so we pass the raw sentences
         sentence_embeddings = _compute_embeddings(tokenizer, model, sentences, device)
 
-        # === 3B: Compute consecutive similarity array ===
-        similarities = []
-        for s_i in range(len(sentences) - 1):
-            cos_sim = float(
-                F.cosine_similarity(
-                    sentence_embeddings[s_i].unsqueeze(0),
-                    sentence_embeddings[s_i + 1].unsqueeze(0),
-                    dim=1
-                )[0]
-            )
-            similarities.append(cos_sim)
+        # Vectorized computation of cosine similarity
+        if len(sentence_embeddings) > 1:
+            sentence_embeddings = torch.stack(sentence_embeddings)  # a list of tensors to a single tensor
+            similarities = F.cosine_similarity(sentence_embeddings[:-1], sentence_embeddings[1:], dim=1).tolist()
+        else:
+            similarities = []  # If only one sentence, no similarities to compute
 
-        # === 3C: Generate a plot of these similarities for inspection ===
+        # 3C: Generate a plot of these similarities for inspection 
         _plot_sentence_similarities(similarities, idx)
 
-        # === 3D: Single-hop chunking with boundary logic ===
+        # 3D: Single-hop chunking with boundary logic 
         single_hop = _chunk_document(
             sentences,
             similarities,
@@ -141,18 +116,18 @@ def run(config: Dict[str, Any]) -> None:
             tau_threshold
         )
 
-        # === 3E: Multi-hop chunking ===
+        # 3E: Multi-hop chunking 
         multihop = _multihop_chunking(single_hop, h_min, h_max)
 
         all_single_hop_chunks.append(single_hop)
         all_multihop_chunks.append(multihop)
 
-    # === Step 4: Add new columns and save ===
+    # Step 4: Add new columns and save 
     dataset = dataset.add_column("chunks", all_single_hop_chunks)
     dataset = dataset.add_column("multihop_chunks", all_multihop_chunks)
     dataset = dataset.add_column("chunking_model", [E5_MODEL_NAME] * len(dataset))
 
-    # === Step 5: Save dataset ===
+    # Step 5: Save dataset 
     logger.info("Saving chunked subset to HF")
     custom_save_dataset(
         dataset=dataset,
@@ -167,45 +142,38 @@ def _compute_embeddings(
     model: AutoModel,
     texts: List[str],
     device: torch.device,
+    batch_size: int = 16,
     max_len: int = 512
 ) -> List[torch.Tensor]:
     """
-    Compute sentence embeddings using the E5 model (intfloat/multilingual-e5-large-instruct).
-
-    Args:
-        tokenizer (AutoTokenizer): The HF tokenizer for E5.
-        model (AutoModel): The HF model (E5).
-        texts (List[str]): List of sentences to embed.
-        device (torch.device): CPU or GPU device.
-        max_len (int): Tokenization truncation length (default=512).
-
-    Returns:
-        A list of torch.Tensor, each with dimension [1024] (the embedding size).
+    Compute sentence embeddings in batches using all available computational resources
+    Uses AMP on CUDA for faster execution
     """
-    # Tokenize in batches to avoid memory spikes for large documents
-    # We'll do a simple single-batch for smaller docs; adapt as needed
-    batch_dict = tokenizer(
-        texts,
-        max_length=max_len,
-        padding=True,
-        truncation=True,
-        return_tensors="pt"
-    ).to(device)
+    embeddings = []
+    model.eval()
 
-    with torch.no_grad():
-        outputs = model(**batch_dict)
-        # average pooling
-        last_hidden = outputs.last_hidden_state  # (batch_size, seq_len, hidden_dim)
-        attention_mask = batch_dict["attention_mask"]
-        last_hidden = last_hidden.masked_fill(~attention_mask[..., None].bool(), 0.0)
-        # average-pool
-        embeddings = last_hidden.sum(dim=1) / attention_mask.sum(dim=1, keepdim=True)
-        # normalize
-        embeddings = F.normalize(embeddings, p=2, dim=1)
+    for i in range(0, len(texts), batch_size):
+        batch_texts = texts[i : i + batch_size]
+        batch_dict = tokenizer(
+            batch_texts,
+            max_length=max_len,
+            padding=True,
+            truncation=True,
+            return_tensors="pt"
+        ).to(device)
 
-    # Return as a list of Tensors
-    return list(embeddings.cpu())
+        with torch.no_grad():
+            with autocast("cuda" if torch.cuda.is_available() else "cpu"):
+                outputs = model(**batch_dict)
+                last_hidden = outputs.last_hidden_state
+                attention_mask = batch_dict["attention_mask"]
+                last_hidden = last_hidden.masked_fill(~attention_mask[..., None].bool(), 0.0)
+                batch_embeddings = last_hidden.sum(dim=1) / attention_mask.sum(dim=1, keepdim=True)
+                batch_embeddings = F.normalize(batch_embeddings, p=2, dim=1)
 
+        embeddings.extend(batch_embeddings.cpu())
+
+    return embeddings
 
 def _split_into_sentences(text: str) -> List[str]:
     """
@@ -240,28 +208,7 @@ def _chunk_document(
 ) -> List[str]:
     """
     Split a document into semantic chunks based on E5-based sentence similarities
-    and token-length constraints.
-
-    The chunk boundary rule from the paper:
-      - Start a new chunk once the current chunk has at least l_min_tokens, AND
-        either (i) the similarity between consecutive sentences is < tau, OR
-        (ii) adding another sentence would exceed l_max_tokens.
-
-    Implementation details:
-      - We treat each sentence's length = number_of_tokens = number_of_whitespace_delimited words.
-      - Similarities[i] is the sim between sentences[i] and sentences[i+1].
-      - We'll iterate sentence by sentence, accumulate them in `current_chunk`,
-        and watch for boundary triggers.
-
-    Args:
-        sentences (List[str]): List of sentences.
-        similarities (List[float]): Cosine sim array for consecutive pairs. Has length len(sentences)-1.
-        l_min_tokens (int): Minimum chunk length in tokens.
-        l_max_tokens (int): Maximum chunk length in tokens.
-        tau (float): Similarity threshold for boundary detection.
-
-    Returns:
-        A list of chunk strings.
+    and token-length constraints
     """
     chunks = []
     current_chunk = []
@@ -318,21 +265,6 @@ def _multihop_chunking(
     """
     Create multi-hop chunks by randomly sampling subsets of single-hop chunks
     and concatenating them. (Per Section 2.2.3 in the paper.)
-
-    Steps:
-      1. Let k ~ Uniform(h_min, h_max)
-      2. Sample k distinct indices from single_hop_chunks
-      3. Concatenate them in ascending order
-      4. Return as a single multihop chunk in a list
-
-    Args:
-        single_hop_chunks (List[str]): Single-hop chunks.
-        h_min (int): Minimum # of chunks to combine.
-        h_max (int): Maximum # of chunks to combine.
-
-    Returns:
-        A list with exactly one multi-hop chunk, or empty if single_hop_chunks is empty.
-        You can adapt this to return multiple multi-hop variants if desired.
     """
     if not single_hop_chunks:
         return []
@@ -348,10 +280,6 @@ def _multihop_chunking(
 def _plot_sentence_similarities(similarities: List[float], doc_idx: int) -> None:
     """
     Plot and save the distribution of consecutive sentence similarities for a given document.
-
-    Args:
-        similarities (List[float]): Cosine similarity array for consecutive sentences.
-        doc_idx (int): Index of the document in the dataset (for naming the plot file).
     """
     if not similarities:
         return
