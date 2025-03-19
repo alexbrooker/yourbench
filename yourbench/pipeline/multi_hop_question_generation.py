@@ -57,13 +57,13 @@ def run(config: Dict[str, Any]) -> None:
 
         for c_idx, chunk_text in enumerate(multi_hop_chunks):
             chunk_section = f"<text_chunk_0>{chunk_text}</text_chunk_0>"
-            test_audience = stage_cfg.get("test_audience", "undergraduate")
+            additional_instructions = stage_cfg.get("additional_instructions", "undergraduate")
 
             user_prompt_filled = MULTI_HOP_QUESTION_GENERATION_USER_PROMPT.format(
                 title=title,
                 document_summary=doc_summary,
                 chunks=chunk_section,
-                test_audience=test_audience
+                additional_instructions=additional_instructions
             )
 
             user_message = {"role": "user", "content": user_prompt_filled}
