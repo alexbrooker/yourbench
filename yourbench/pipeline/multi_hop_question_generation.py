@@ -57,7 +57,7 @@ def run(config: Dict[str, Any]) -> None:
 
         for c_idx, chunk_text in enumerate(multi_hop_chunks):
             chunk_section = f"<text_chunk_0>{chunk_text}</text_chunk_0>"
-            additional_instructions = stage_cfg.get("additional_instructions", "undergraduate")
+            additional_instructions = stage_cfg.get("additional_instructions", "Generate questions that are appropriate for undergraduate students.")
 
             user_prompt_filled = MULTI_HOP_QUESTION_GENERATION_USER_PROMPT.format(
                 title=title,
