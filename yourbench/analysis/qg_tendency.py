@@ -72,7 +72,9 @@ model_mapping = {
     "allenai/OLMo-2-0325-32B-Instruct" : "OLMo 2 32B",
     "mistralai/Mistral-Small-3.1-24B-Instruct-2503" : "Mistral 3.1 24B",
     "gpt-4o" : "GPT 4o",
-    "gpt-4o-mini" : "GPT 4o Mini",
+    "gpt-4o-mini-Sumuk" : "GPT 4o Mini",
+    "claude-3-7-sonnet-20250219" : "Claude 3.7 Sonnet",
+    "claude-3-5-haiku-20241022" : "Claude 3.5 Haiku",
 }
 
 # === Helper Functions for Data Processing ===
