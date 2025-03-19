@@ -50,9 +50,11 @@ pipeline:
 
   single_shot_question_generation:
     run: true
+    additional_instructions: "Generate questions that are appropriate for undergraduate students."
 
   multi_hop_question_generation:
     run: true
+    additional_instructions: "Generate questions that are appropriate for graduate students."
 
   answer_generation:
     question_type: single_shot # or multi_hop
