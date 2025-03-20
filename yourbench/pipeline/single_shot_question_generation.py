@@ -85,6 +85,7 @@ class SingleHopQuestionRow:
     generating_model: str
     thought_process: str
     raw_response: str
+    citations: List[str]
 
 
 def run(config: Dict[str, Any]) -> None:
@@ -327,6 +328,10 @@ def run(config: Dict[str, Any]) -> None:
                 if not isinstance(thought_process, str):
                     thought_process = str(thought_process)
 
+                citations = pair.get("citations", [])
+                if not isinstance(citations, list):
+                    citations = []
+
                 # Construct final data row
                 question_row = SingleHopQuestionRow(
                     chunk_id=chunk_id,
@@ -338,6 +343,7 @@ def run(config: Dict[str, Any]) -> None:
                     generating_model=model_name,
                     thought_process=thought_process,
                     raw_response=raw_response,
+                    citations=citations,
                 )
                 question_dataset_rows.append(question_row.__dict__)
 
