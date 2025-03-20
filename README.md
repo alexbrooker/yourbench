@@ -22,15 +22,15 @@
   <strong>
     [<a href="https://github.com/huggingface/yourbench">GitHub</a>] 
     &middot; 
-    [<a href="https://huggingface.co/datasets/sumuks/yourbench_y1">Dataset</a>] 
+    [<a href="https://huggingface.co/datasets/sumuks/tempora">Dataset</a>] 
     &middot; 
     [<a href="https://github.com/huggingface/yourbench/tree/main/docs">Documentation</a>]
   </strong>
 </p>
 
 <!-- Example badges -->
-<a href="https://github.com/sumukshashidhar/yourbench/stargazers">
-  <img src="https://img.shields.io/github/stars/sumukshashidhar/yourbench?style=social" alt="GitHub Repo stars">
+<a href="https://github.com/huggingface/yourbench/stargazers">
+  <img src="https://img.shields.io/github/stars/huggingface/yourbench?style=social" alt="GitHub Repo stars">
 </a>
 
 <p align="center">
