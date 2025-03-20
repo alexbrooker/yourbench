@@ -33,6 +33,16 @@
   <img src="https://img.shields.io/github/stars/sumukshashidhar/yourbench?style=social" alt="GitHub Repo stars">
 </a>
 
+<p align="center">
+  <a href="https://youtu.be/mhszO6kZSbI">
+    <img src="https://img.youtube.com/vi/mhszO6kZSbI/maxresdefault.jpg" alt="YourBench Demo Video" width="600" style="border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);" />
+    <br>
+    <img src="https://img.shields.io/badge/Watch%20Demo-YouTube-red?style=for-the-badge&logo=youtube" alt="Watch Demo on YouTube">
+    <br>
+    <em>Watch our 3-minute demo of the YourBench pipeline</em>
+  </a>
+</p>
+
 </div>
 
 ---
@@ -116,7 +126,7 @@ YourBench follows a multi-stage approach:
    Convert PDFs, HTML, Word, or text into a standardized Markdown format.
 
 2. **Summarization**  
-   Generate a concise “global summary” for each document, using a designated summarization LLM.
+   Generate a concise "global summary" for each document, using a designated summarization LLM.
 
 3. **Chunking**  
    Split or chunk documents (and optionally combine multiple smaller segments) based on text similarity or length constraints.
@@ -159,7 +169,7 @@ This will step through ingestion → summarization → chunking → question gen
 
 ### Interactive Mode
 
-If you simply type `yourbench` (no arguments), you’ll enter an interactive CLI. You can:
+If you simply type `yourbench` (no arguments), you'll enter an interactive CLI. You can:
 
 - Choose which config file to use
 - Launch the pipeline
@@ -198,7 +208,7 @@ A config typically has:
 
 YourBench was evaluated in the paper on a contemporary dataset named **Tempora** (documents collected after March 2025). This dataset is relevant for testing LLMs on new or time-sensitive knowledge:
 - 7,368 documents from domains like legal, medical, news, blogs, etc.  
-- A balanced subset “Tempora-0325B” is also provided for controlled evaluation.
+- A balanced subset "Tempora-0325B" is also provided for controlled evaluation.
 
 **Download**:  
 ```bash
@@ -221,7 +231,7 @@ This loads a sample banner and any future expansions to visualize pipeline steps
 
 - **Add new models** by editing `model_list` in your config. Provide `model_name`, `api_key`, `max_concurrent_requests`, etc.  
 - **Custom pipeline step**: drop a new `.py` in `yourbench/pipeline/<my_custom_step>.py` with a `run(config)` function.  
-- Register your step in the config’s `pipeline` block.
+- Register your step in the config's `pipeline` block.
 
 ---
 
@@ -229,7 +239,7 @@ This loads a sample banner and any future expansions to visualize pipeline steps
 
 YourBench is described in the working paper:
 
-> “**YourBench: Dynamic Evaluation Set Generation with LLMs**”  
+> "**YourBench: Dynamic Evaluation Set Generation with LLMs**"  
 > *Sumuk Shashidhar, et al. (2025)*
 
 When referencing in academic works, you may use:
