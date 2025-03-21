@@ -247,9 +247,9 @@ def run(config: dict[str, Any]) -> None:
         output_dataset_name = smart_get_output_dataset_name("multi_hop_question_generation", config)
         output_subset = smart_get_output_subset("multi_hop_question_generation", config)
 
-        logger.info("Loading dataset for multi-hop QG: '{}'", source_dataset_name)
+        logger.info(f"Loading dataset for multi-hop QG: '{source_dataset_name}'")
         dataset = smart_load_dataset(source_dataset_name, config, source_subset)
-        logger.info("Loaded dataset with {} rows.", len(dataset))
+        logger.info(f"Loaded dataset with {len(dataset)} rows.")
 
         # Prepare system message for LLM
         system_msg = {"role": "system", "content": MULTI_HOP_QUESTION_GENERATION_SYSTEM_PROMPT}
@@ -307,12 +307,12 @@ def run(config: dict[str, Any]) -> None:
 
             multi_hop_chunks = row.get("multihop_chunks", [])
             if not isinstance(multi_hop_chunks, list) or not multi_hop_chunks:
-                logger.debug("No multi-hop chunks found in row index={}, doc_id={}. Skipping row.", row_idx, doc_id)
+                logger.debug(f"No multi-hop chunks found in row index={row_idx}, doc_id={doc_id}. Skipping row.")
                 continue
 
             chosen_multi_hops = sample_multi_hop_chunks(multi_hop_chunks)
             if not chosen_multi_hops:
-                logger.debug("Row idx={} doc_id={} had multi-hop chunks but none after sampling.", row_idx, doc_id)
+                logger.debug(f"Row idx={row_idx} doc_id={doc_id} had multi-hop chunks but none after sampling.")
                 continue
 
             additional_instructions = stage_cfg.get("additional_instructions", "undergraduate")
@@ -325,7 +325,7 @@ def run(config: dict[str, Any]) -> None:
                 subchunk_ids = mh_dict.get("chunk_ids", [])
                 subchunk_texts = mh_dict.get("chunks_text", [])
                 if not subchunk_texts:
-                    logger.debug("Empty multi-hop chunk at row_idx={}, doc_id={}. Skipping.", row_idx, doc_id)
+                    logger.debug(f"Empty multi-hop chunk at row_idx={row_idx}, doc_id={doc_id}. Skipping.")
                     continue
 
                 # Build the user prompt by enumerating each subchunk
@@ -350,7 +350,7 @@ def run(config: dict[str, Any]) -> None:
             logger.warning("No multi-hop inference calls were created. Exiting stage.")
             return
 
-        logger.info("Sending {} multi-hop calls to inference...", len(all_inference_calls))
+        logger.info(f"Sending {len(all_inference_calls)} multi-hop calls to inference...")
         responses_dict = run_inference(
             config=config,
             step_name="multi_hop_question_generation",
@@ -362,13 +362,10 @@ def run(config: dict[str, Any]) -> None:
 
         # Process each model that responded
         for model_name, model_responses in responses_dict.items():
-            logger.info("Processing {} responses for model: {}", len(model_responses), model_name)
+            logger.info(f"Processing {len(model_responses)} responses for model: {model_name}")
             if len(model_responses) != len(call_index_map):
                 logger.error(
-                    "Model '{}' returned {} responses, expected {}. Possible mismatch.",
-                    model_name,
-                    len(model_responses),
-                    len(call_index_map),
+                    f"Model '{model_name}' returned {len(model_responses)} responses, expected {len(call_index_map)}. Possible mismatch."
                 )
 
             for idx, raw_resp in enumerate(model_responses):
@@ -379,7 +376,7 @@ def run(config: dict[str, Any]) -> None:
                 json_str = _extract_output_json(raw_resp)
                 if not json_str.strip():
                     logger.warning(
-                        "No parseable JSON for row={}, doc_id={} (model={}). Skipping.", row_idx, doc_id, model_name
+                        f"No parseable JSON for row={row_idx}, doc_id={doc_id} (model={model_name}). Skipping."
                     )
                     continue
 
@@ -387,17 +384,13 @@ def run(config: dict[str, Any]) -> None:
                     question_answer_list = json.loads(json_str)
                 except Exception as e:
                     logger.warning(
-                        "Failed to parse JSON for row={}, doc_id={} (model={}): {}", row_idx, doc_id, model_name, e
+                        f"Failed to parse JSON for row={row_idx}, doc_id={doc_id} (model={model_name}): {e}"
                     )
                     continue
 
                 if not isinstance(question_answer_list, list):
                     logger.warning(
-                        "Expected a list of question-answer pairs; got type={} instead. row={}, doc_id={}, model={}",
-                        type(question_answer_list).__name__,
-                        row_idx,
-                        doc_id,
-                        model_name,
+                        f"Expected a list of question-answer pairs; got type={type(question_answer_list).__name__} instead. row={row_idx}, doc_id={doc_id}, model={model_name}"
                     )
                     continue
 
@@ -416,7 +409,7 @@ def run(config: dict[str, Any]) -> None:
                         
                         # Skip if question is empty after normalization
                         if not qa_pair.question:
-                            logger.debug("Empty question found for row={}, doc_id={}, skipping pair.", row_idx, doc_id)
+                            logger.debug(f"Empty question found for row={row_idx}, doc_id={doc_id}, skipping pair.")
                             continue
                         
                         # Convert to MultiHopQuestionRow and add to final list
@@ -430,14 +423,14 @@ def run(config: dict[str, Any]) -> None:
                         final_multi_hop_questions.append(row_obj.__dict__)
 
                     except Exception as pair_error:
-                        logger.warning("Error processing QA pair for doc_id={}, skipping pair: {}", doc_id, pair_error)
+                        logger.warning(f"Error processing QA pair for doc_id={doc_id}, skipping pair: {pair_error}")
                         continue
 
         if not final_multi_hop_questions:
             logger.warning("No valid multi-hop question rows produced. Exiting stage.")
             return
 
-        logger.info("Constructing multi-hop question dataset with {} rows...", len(final_multi_hop_questions))
+        logger.info(f"Constructing multi-hop question dataset with {len(final_multi_hop_questions)} rows...")
 
         # Convert to Hugging Face Dataset
         try:
@@ -445,11 +438,11 @@ def run(config: dict[str, Any]) -> None:
             dataset_dict = {k: [row[k] for row in final_multi_hop_questions] for k in col_keys}
             final_question_dataset = Dataset.from_dict(dataset_dict)
         except Exception as ds_error:
-            logger.error("Failed to create dataset from multi-hop question rows: {}", ds_error)
+            logger.error(f"Failed to create dataset from multi-hop question rows: {ds_error}")
             return
 
         # Save final dataset
-        logger.info("Saving multi-hop question dataset as '{}'.", output_dataset_name)
+        logger.info(f"Saving multi-hop question dataset as '{output_dataset_name}'.")
         save_dataset(
             dataset=final_question_dataset,
             step_name="multi_hop_question_generation",
@@ -460,7 +453,7 @@ def run(config: dict[str, Any]) -> None:
         logger.success("Multi-hop question generation completed successfully.")
 
     except Exception as outer_exc:
-        logger.error("Error in multi_hop_question_generation run function: {}", str(outer_exc))
+        logger.error(f"Error in multi_hop_question_generation run function: {str(outer_exc)}")
         logger.warning("Multi-hop question generation stage encountered errors.")
 
 
@@ -487,7 +480,7 @@ def _extract_tag_content(text: str, tag: str) -> str:
         if match:
             return match.group(1).strip()
     except Exception as e:
-        logger.debug("Error extracting tag content for tag '{}': {}", tag, e)
+        logger.debug(f"Error extracting tag content for tag '{tag}': {e}")
     return ""
 
 
@@ -524,7 +517,7 @@ def _extract_output_json(raw_response: str) -> str:
         fallback_candidates = _best_effort_json_extract(raw_response)
         return fallback_candidates[0] if fallback_candidates else ""
     except Exception as e:
-        logger.debug("Error extracting JSON from response: {}", e)
+        logger.debug(f"Error extracting JSON from response: {e}")
         return ""
 
 
@@ -547,7 +540,7 @@ def _maybe_strip_triple_backticks(text_in: str) -> str:
         if m:
             return m.group(1)
     except Exception as e:
-        logger.debug("Error stripping backticks: {}", e)
+        logger.debug(f"Error stripping backticks: {e}")
     return text_in
 
 
@@ -577,5 +570,5 @@ def _best_effort_json_extract(full_text: str) -> list[str]:
             ):
                 candidates.append(match_text.strip())
     except Exception as e:
-        logger.debug("Error in best effort JSON extraction: {}", e)
+        logger.debug(f"Error in best effort JSON extraction: {e}")
     return candidates
