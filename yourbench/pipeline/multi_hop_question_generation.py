@@ -47,7 +47,7 @@ import json
 import random
 import re
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any 
 
 from datasets import Dataset
 from loguru import logger
@@ -68,6 +68,68 @@ from yourbench.utils.prompts import (
 
 
 @dataclass
+class QuestionAnswerPair:
+    """
+    Data structure to represent a question-answer pair returned by the model.
+    
+    Attributes:
+        question (str):
+            The generated multi-hop question text.
+        answer (str):
+            A plausible model-provided answer to the generated question.
+        estimated_difficulty (int):
+            Difficulty rating on a scale of 1 (easiest) to 10 (hardest).
+        question_type (str):
+            A descriptor for the question style (e.g., "analytical", "factual").
+        thought_process (str):
+            Free-form text describing the model's reasoning for the question.
+        citations (list[str]):
+            Optional references/quotations from the combined chunks.
+    """
+    question: str
+    answer: str
+    estimated_difficulty: int = 5
+    question_type: str = "unknown"
+    thought_process: str = ""
+    citations: list[str] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        """
+        Validate and normalize fields after initialization.
+        """
+        # Ensure question is a string
+        if not isinstance(self.question, str):
+            self.question = str(self.question)
+        self.question = self.question.strip()
+        
+        # Ensure answer is a string
+        if not isinstance(self.answer, str):
+            self.answer = str(self.answer)
+        self.answer = self.answer.strip()
+        
+        # Ensure difficulty is an int in range 1-10
+        if not isinstance(self.estimated_difficulty, int):
+            try:
+                self.estimated_difficulty = int(self.estimated_difficulty)
+            except (ValueError, TypeError):
+                self.estimated_difficulty = 5
+        self.estimated_difficulty = max(1, min(10, self.estimated_difficulty))
+        
+        # Ensure question_type is a string
+        if not isinstance(self.question_type, str):
+            self.question_type = str(self.question_type)
+        
+        # Ensure thought_process is a string
+        if not isinstance(self.thought_process, str):
+            self.thought_process = str(self.thought_process)
+        
+        # Ensure citations is a list of strings
+        if not isinstance(self.citations, list):
+            self.citations = []
+        self.citations = [str(c) for c in self.citations]
+
+
+@dataclass
 class MultiHopQuestionRow:
     """
     Data structure to represent a single multi-hop question row.
@@ -76,7 +138,7 @@ class MultiHopQuestionRow:
         document_id (str):
             Identifier of the document from which the question is generated.
         source_chunk_ids (list[str]):
-            List of single-hop chunk IDs used in producing the multi-hop question.
+            list of single-hop chunk IDs used in producing the multi-hop question.
         question (str):
             The generated multi-hop question text.
         self_answer (str):
@@ -105,6 +167,44 @@ class MultiHopQuestionRow:
     thought_process: str
     citations: list[str] = field(default_factory=list)
     raw_response: str = field(default="")
+    
+    @classmethod
+    def from_qa_pair(cls, 
+                     qa_pair: QuestionAnswerPair, 
+                     document_id: str, 
+                     source_chunk_ids: list[str], 
+                     generating_model: str, 
+                     raw_response: str = "") -> "MultiHopQuestionRow":
+        """
+        Create a MultiHopQuestionRow from a QuestionAnswerPair.
+        
+        Args:
+            qa_pair (QuestionAnswerPair):
+                The question-answer pair to convert.
+            document_id (str):
+                Identifier of the document from which the question is generated.
+            source_chunk_ids (list[str]):
+                list of single-hop chunk IDs used in producing the multi-hop question.
+            generating_model (str):
+                Name of the model that generated the question-answer pair.
+            raw_response (str, optional):
+                The full, unedited response from the model.
+                
+        Returns:
+            MultiHopQuestionRow: A new instance with the data from the QuestionAnswerPair.
+        """
+        return cls(
+            document_id=document_id,
+            source_chunk_ids=source_chunk_ids,
+            question=qa_pair.question,
+            self_answer=qa_pair.answer,
+            estimated_difficulty=qa_pair.estimated_difficulty,
+            self_assessed_question_type=qa_pair.question_type,
+            generating_model=generating_model,
+            thought_process=qa_pair.thought_process,
+            citations=qa_pair.citations,
+            raw_response=raw_response
+        )
 
 
 def run(config: dict[str, Any]) -> None:
@@ -164,7 +264,7 @@ def run(config: dict[str, Any]) -> None:
 
             Args:
                 mh_chunks (list[dict[str, Any]]):
-                    List of multi-hop chunk dictionaries containing 'chunk_ids'
+                    list of multi-hop chunk dictionaries containing 'chunk_ids'
                     and 'chunks_text'.
 
             Returns:
@@ -302,58 +402,29 @@ def run(config: dict[str, Any]) -> None:
                     continue
 
                 # Construct final question data for each QA pair
-                for qap in question_answer_list:
+                for qap_dict in question_answer_list:
                     try:
-                        question_text = qap.get("question", "")
-                        question_text = (
-                            question_text.strip() if isinstance(question_text, str) else str(question_text).strip()
+                        # Parse the QA pair using our dataclass
+                        qa_pair = QuestionAnswerPair(
+                            question=qap_dict.get("question", ""),
+                            answer=qap_dict.get("answer", ""),
+                            estimated_difficulty=qap_dict.get("estimated_difficulty", 5),
+                            question_type=qap_dict.get("question_type", "unknown"),
+                            thought_process=qap_dict.get("thought_process", ""),
+                            citations=qap_dict.get("citations", []),
                         )
-                        if not question_text:
+                        
+                        # Skip if question is empty after normalization
+                        if not qa_pair.question:
                             logger.debug("Empty question found for row={}, doc_id={}, skipping pair.", row_idx, doc_id)
                             continue
-
-                        # Handle potential non-string answers
-                        answer_raw = qap.get("answer", "")
-                        self_answer = answer_raw.strip() if isinstance(answer_raw, str) else str(answer_raw).strip()
-
-                        # Handle potential non-int difficulty
-                        diff_raw = qap.get("estimated_difficulty", 5)
-                        try:
-                            diff_val = int(diff_raw)
-                        except (ValueError, TypeError):
-                            logger.warning("Invalid difficulty '{}' for doc_id={}, defaulting to 5", diff_raw, doc_id)
-                            diff_val = 5
-                        # Ensure difficulty is in range 1-10
-                        diff_val = max(1, min(10, diff_val))
-
-                        # Ensure question_type is a string
-                        qtype = qap.get("question_type", "unknown")
-                        if not isinstance(qtype, str):
-                            qtype = str(qtype)
-
-                        # Ensure thought_process is a string
-                        thought_process = qap.get("thought_process", "")
-                        if not isinstance(thought_process, str):
-                            thought_process = str(thought_process)
-
-                        cits = qap.get("citations", [])
-                        if not isinstance(cits, list):
-                            logger.warning("Citations for doc_id={} is not a list. Converting to empty list.", doc_id)
-                            cits = []
-
-                        # Ensure all citation items are strings
-                        cits = [str(c) for c in cits]
-
-                        row_obj = MultiHopQuestionRow(
+                        
+                        # Convert to MultiHopQuestionRow and add to final list
+                        row_obj = MultiHopQuestionRow.from_qa_pair(
+                            qa_pair=qa_pair,
                             document_id=doc_id,
                             source_chunk_ids=source_chunk_ids,
-                            question=question_text,
-                            self_answer=self_answer,
-                            estimated_difficulty=diff_val,
-                            self_assessed_question_type=qtype,
                             generating_model=model_name,
-                            thought_process=thought_process,
-                            citations=cits,
                             raw_response=raw_resp,
                         )
                         final_multi_hop_questions.append(row_obj.__dict__)
