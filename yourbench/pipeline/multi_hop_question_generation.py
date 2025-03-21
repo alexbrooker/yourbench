@@ -47,7 +47,7 @@ import json
 import random
 import re
 from dataclasses import dataclass, field
-from typing import Any, Dict, List
+from typing import Any
 
 from datasets import Dataset
 from loguru import logger
@@ -75,7 +75,7 @@ class MultiHopQuestionRow:
     Attributes:
         document_id (str):
             Identifier of the document from which the question is generated.
-        source_chunk_ids (List[str]):
+        source_chunk_ids (list[str]):
             List of single-hop chunk IDs used in producing the multi-hop question.
         question (str):
             The generated multi-hop question text.
@@ -89,25 +89,25 @@ class MultiHopQuestionRow:
             Name of the model that generated the question-answer pair.
         thought_process (str):
             Free-form text describing the model's reasoning for the question.
-        citations (List[str]):
+        citations (list[str]):
             Optional references/quotations from the combined chunks.
         raw_response (str):
             The full, unedited response from the model.
     """
 
     document_id: str
-    source_chunk_ids: List[str]
+    source_chunk_ids: list[str]
     question: str
     self_answer: str
     estimated_difficulty: int
     self_assessed_question_type: str
     generating_model: str
     thought_process: str
-    citations: List[str] = field(default_factory=list)
+    citations: list[str] = field(default_factory=list)
     raw_response: str = field(default="")
 
 
-def run(config: Dict[str, Any]) -> None:
+def run(config: dict[str, Any]) -> None:
     """
     Execute the multi-hop question generation stage.
 
@@ -118,7 +118,7 @@ def run(config: Dict[str, Any]) -> None:
       4. Parsing and structuring the results into a new dataset.
 
     Args:
-        config (Dict[str, Any]):
+        config (dict[str, Any]):
             The overall pipeline configuration dictionary, usually loaded
             from a YAML file. Must include:
             - pipeline.multi_hop_question_generation.run (bool)
@@ -154,21 +154,21 @@ def run(config: Dict[str, Any]) -> None:
         # Prepare system message for LLM
         system_msg = {"role": "system", "content": MULTI_HOP_QUESTION_GENERATION_SYSTEM_PROMPT}
 
-        all_inference_calls: List[InferenceCall] = []
-        call_index_map: List[tuple] = []
+        all_inference_calls: list[InferenceCall] = []
+        call_index_map: list[tuple] = []
 
-        def sample_multi_hop_chunks(mh_chunks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        def sample_multi_hop_chunks(mh_chunks: list[dict[str, Any]]) -> list[dict[str, Any]]:
             """
             Sample multi-hop chunks from each row based on config settings
             to control cost (percentage or count-based).
 
             Args:
-                mh_chunks (List[Dict[str, Any]]):
+                mh_chunks (list[dict[str, Any]]):
                     List of multi-hop chunk dictionaries containing 'chunk_ids'
                     and 'chunks_text'.
 
             Returns:
-                List[Dict[str, Any]]:
+                list[dict[str, Any]]:
                     The potentially sampled subset of multi-hop chunks.
             """
             chunk_sampling_cfg = stage_cfg.get("chunk_sampling", {})
@@ -258,7 +258,7 @@ def run(config: Dict[str, Any]) -> None:
         )
 
         # Prepare final question rows
-        final_multi_hop_questions: List[Dict[str, Any]] = []
+        final_multi_hop_questions: list[dict[str, Any]] = []
 
         # Process each model that responded
         for model_name, model_responses in responses_dict.items():
@@ -480,7 +480,7 @@ def _maybe_strip_triple_backticks(text_in: str) -> str:
     return text_in
 
 
-def _best_effort_json_extract(full_text: str) -> List[str]:
+def _best_effort_json_extract(full_text: str) -> list[str]:
     """
     Attempt to locate JSON-like bracketed text from a larger string.
     Collects all substring candidates starting with '{' or '[' and
@@ -491,7 +491,7 @@ def _best_effort_json_extract(full_text: str) -> List[str]:
             The raw text potentially containing JSON.
 
     Returns:
-        List[str]: A list of bracket-delimited substrings that might be valid JSON.
+        list[str]: A list of bracket-delimited substrings that might be valid JSON.
     """
     if not full_text or not isinstance(full_text, str):
         return []
