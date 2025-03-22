@@ -58,8 +58,8 @@ import torch
 import matplotlib.pyplot as plt
 import torch.nn.functional as F
 from loguru import logger
-from transformers import AutoModel, AutoTokenizer
 
+from transformers import AutoModel, AutoTokenizer
 from yourbench.utils.dataset_engine import custom_load_dataset, custom_save_dataset
 
 
