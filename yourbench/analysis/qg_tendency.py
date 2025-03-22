@@ -64,6 +64,9 @@ from yourbench.utils.dataset_engine import smart_get_source_subset
 # Model display name mapping
 model_mapping = {
     "Qwen/Qwen2.5-72B-Instruct": "Qwen2.5 72B",
+    "Qwen/Qwen2.5-32B-Instruct": "Qwen2.5 32B",
+    "Qwen/Qwen2.5-14B-Instruct": "Qwen2.5 14B",
+    "Qwen/Qwen2.5-7B-Instruct": "Qwen2.5 7B",
     "deepseek-chat": "DeepSeek V3 671B",
     "Qwen/Qwen2.5-VL-72B-Instruct": "Qwen2.5 VL 72B",
     "deepseek-reasoner": "DeepSeek R1 671B",
@@ -71,10 +74,22 @@ model_mapping = {
     "meta-llama/Llama-3.3-70B-Instruct" : "Llama 3.3 70B",
     "allenai/OLMo-2-0325-32B-Instruct" : "OLMo 2 32B",
     "mistralai/Mistral-Small-3.1-24B-Instruct-2503" : "Mistral 3.1 24B",
-    "gpt-4o" : "GPT 4o",
+    "gpt-4o-Sumuk" : "GPT 4o",
     "gpt-4o-mini-Sumuk" : "GPT 4o Mini",
     "claude-3-7-sonnet-20250219" : "Claude 3.7 Sonnet",
     "claude-3-5-haiku-20241022" : "Claude 3.5 Haiku",
+    "deepseek-ai/DeepSeek-R1-Distill-Llama-70B" : "DeepSeek R1 Distill Llama 70B",
+    "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B" : "DeepSeek R1 Distill Qwen 32B",
+    "microsoft/phi-4" : "Phi 4",
+    "mistralai/Mistral-Large-Instruct-2411" : "Mistral Large 2411",
+    "google/gemma-3-27b-it" : "Gemma 3 27B",
+    "google/gemini-2.0-flash-lite-001" : "Gemini 2.0 Flash Lite",
+    "google/gemini-2.0-flash-001" : "Gemini 2.0 Flash",
+    "meta-llama/Llama-3.1-8B-Instruct" : "Llama 3.1 8B",
+    "meta-llama/llama-3.1-405b-instruct" : "Llama 3.1 405B",
+    "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B" : "DeepSeek R1 Distill Qwen 7B",
+    "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B" : "DeepSeek R1 Distill Qwen 32B",
+    "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B" : "DeepSeek R1 Distill Qwen 14B",
 }
 
 # === Helper Functions for Data Processing ===
@@ -161,7 +176,7 @@ def _create_question_ratio_plot(
     ratios = [count / min_count for count in counts]
     
     # Create plot
-    plt.figure(figsize=(3, 3), dpi=300)
+    plt.figure(figsize=(9, 3), dpi=300)
     
     # Use a subtle, professional color palette
     palette = sns.color_palette("mako", len(models))

@@ -21,6 +21,7 @@ to populate a final dataset with the following columns:
 4) kind                    (str)  - Either "single_shot" or "multi_hop".
 5) estimated_difficulty    (int)  - Estimated difficulty (1-10).
 6) citations               (List[str]) - List of source citations or references.
+7) document_analysis       (str) - The analysis of the document that was used to generate the question.
 7) document_id             (str)  - The ID of the document from which the question is derived.
 8) chunk_ids               (List[str]) - The chunk ID(s) used in forming the question.
 9) question_generating_model (str) - The HF model ID that generated this question.
@@ -194,7 +195,8 @@ def run(config: Dict[str, Any]) -> None:
             "question_category": row.get("self_assessed_question_type", "unknown"),
             "kind": "single_shot",
             "estimated_difficulty": row.get("estimated_difficulty", 5),
-            "citations": [],  # single-shot pipeline typically doesn't store citations
+            "citations": row.get("citations", []),  # single-shot pipeline typically doesn't store citations
+            "document_analysis": row.get("document_analysis", ""),
             "document_id": doc_id,
             "chunk_ids": [chunk_id] if chunk_id else [],
             "question_generating_model": row.get("generating_model", ""),
@@ -228,6 +230,7 @@ def run(config: Dict[str, Any]) -> None:
             "kind": "multi_hop",
             "estimated_difficulty": row.get("estimated_difficulty", 5),
             "citations": row.get("citations", []),
+            "document_analysis": row.get("document_analysis", ""),
             "document_id": doc_id,
             "chunk_ids": chunk_ids,
             "question_generating_model": row.get("generating_model", ""),
