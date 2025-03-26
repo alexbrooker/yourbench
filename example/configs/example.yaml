@@ -34,6 +34,8 @@ model_roles:
     - Qwen/Qwen2.5-72B-Instruct
   multi_hop_question_generation:
     - Qwen/Qwen2.5-72B-Instruct
+  answer_generation:
+    - Qwen/Qwen2.5-72B-Instruct # ideally you'll have different or various models here
 
 pipeline:
   # to convert your documents from their source format to markdown
