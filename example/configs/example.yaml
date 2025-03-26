@@ -85,3 +85,9 @@ pipeline:
   # this combines your single shot and multi-hop questions into one nice dataset!
   lighteval:
     run: true
+
+  answer_generation:
+    run: true
+    scenarios:
+      - zero_shot
+      - with_correct_chunk
