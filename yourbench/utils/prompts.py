@@ -496,3 +496,39 @@ JUDGE_ANSWER_USER_PROMPT = """<document_summary>
 <answer_b>
 {answer_b}
 </answer_b>"""
+
+
+SCORE_ANSWER_BINARY_USER_PROMPT = """You are a strict evaluator tasked with determining the accuracy of a predicted answer based on a provided ground truth.
+
+You are provided:
+- A question.
+- A ground truth answer.
+- A model-predicted answer.
+
+Task: Decide whether the predicted answer correctly matches the ground truth.
+
+Procedure:
+- Generate a brief chain of thought comparing the predicted answer against the ground truth in <scratchpad> XML tags.
+- Clearly state your judgement / reasoning in <judgement> XML tags.
+- Provide your final evaluation within XML <score> tags.
+
+Evaluation Criteria:
+
+- Output "1" if the predicted answer accurately matches or correctly paraphrases the ground truth in the <score> XML tags.
+- Output "0" if the predicted answer is incomplete, incorrect, or contradicts the ground truth in any meaningful way in the <score> XML tags.
+
+
+Here is what you need to score:
+
+<question>
+{question}
+</question>
+
+<ground_truth_answer>
+{ground_truth}
+</ground_truth_answer>
+
+<predicted_answer>
+{predicted_answer}
+</predicted_answer>
+"""
