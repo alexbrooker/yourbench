@@ -21,19 +21,14 @@ Configuration Example (YAML):
 """
 
 from typing import Any, Dict, List
-from loguru import logger
-from datasets import Dataset
 
-from yourbench.utils.dataset_engine import (
-    custom_load_dataset,
-    custom_save_dataset
-)
-from yourbench.utils.inference_engine import InferenceCall, run_inference
-from yourbench.utils.prompts import (
-    ZEROSHOT_QA_USER_PROMPT,
-    GOLD_QA_USER_PROMPT
-)
+from loguru import logger
+
+from datasets import Dataset
+from yourbench.utils.prompts import GOLD_QA_USER_PROMPT, ZEROSHOT_QA_USER_PROMPT
+from yourbench.utils.dataset_engine import custom_load_dataset, custom_save_dataset
 from yourbench.utils.parsing_engine import extract_content_from_xml_tags
+from yourbench.utils.inference_engine import InferenceCall, run_inference
 
 
 def run(config: Dict[str, Any]) -> None:
@@ -71,7 +66,7 @@ def run(config: Dict[str, Any]) -> None:
             config=config,
             source_subset="single_shot_questions",
             scenario=scenario,
-            output_subset="single_shot_questions_with_answers"
+            output_subset="single_shot_questions_with_answers",
         )
 
         # Multi-hop
@@ -79,17 +74,14 @@ def run(config: Dict[str, Any]) -> None:
             config=config,
             source_subset="multi_hop_questions",
             scenario=scenario,
-            output_subset="multi_hop_questions_with_answers"
+            output_subset="multi_hop_questions_with_answers",
         )
 
     logger.success("answer_generation stage complete.")
 
 
 def _generate_answers_for_questions(
-    config: Dict[str, Any],
-    source_subset: str,
-    scenario: str,
-    output_subset: str
+    config: Dict[str, Any], source_subset: str, scenario: str, output_subset: str
 ) -> None:
     """
     Loads a question subset (single_shot or multi_hop), runs the chosen scenario
@@ -122,7 +114,7 @@ def _generate_answers_for_questions(
     responses = run_inference(
         config=config,
         step_name="answer_generation",  # "model_roles" can link here
-        inference_calls=calls
+        inference_calls=calls,
     )
     if not responses:
         logger.warning(f"No responses returned for subset={source_subset}, scenario={scenario}.")
@@ -130,10 +122,7 @@ def _generate_answers_for_questions(
 
     # Parse and assemble
     final_ds = _parse_and_assemble(
-        question_ds=question_ds,
-        responses_dict=responses,
-        row_map=row_map,
-        scenario=scenario
+        question_ds=question_ds, responses_dict=responses, row_map=row_map, scenario=scenario
     )
     if final_ds is None or len(final_ds) == 0:
         logger.warning(f"No answers parsed for subset={source_subset}, scenario={scenario}.")
@@ -144,12 +133,7 @@ def _generate_answers_for_questions(
     logger.info(f"Appended {len(final_ds)} new answers to '{output_subset}' (scenario={scenario}).")
 
 
-def _build_inference_calls_scenario(
-    config: Dict[str, Any],
-    question_ds: Dataset,
-    scenario: str,
-    source_subset: str
-):
+def _build_inference_calls_scenario(config: Dict[str, Any], question_ds: Dataset, scenario: str, source_subset: str):
     """
     For each row in question_ds, build an InferenceCall with the appropriate prompt:
      - "zero_shot" => use ZEROSHOT_QA_USER_PROMPT
@@ -197,11 +181,7 @@ def _build_inference_calls_scenario(
                 chunk_id = row.get("chunk_id", "")
                 chunk_text = doc_meta_map.get(doc_id, {}).get("chunks_map", {}).get(chunk_id, "")
                 doc_summary = doc_meta_map.get(doc_id, {}).get("document_summary", "")
-                user_prompt = GOLD_QA_USER_PROMPT.format(
-                    question=qtext,
-                    summary=doc_summary,
-                    document=chunk_text
-                )
+                user_prompt = GOLD_QA_USER_PROMPT.format(question=qtext, summary=doc_summary, document=chunk_text)
                 user_msg = {"role": "user", "content": user_prompt}
                 calls.append(InferenceCall(messages=[user_msg], tags=["with_correct_chunk"]))
                 row_map.append(i)
@@ -219,9 +199,7 @@ def _build_inference_calls_scenario(
                 chunk_text_joined = "\n\n".join(combined_texts)
 
                 user_prompt = GOLD_QA_USER_PROMPT.format(
-                    question=qtext,
-                    summary=doc_summary,
-                    document=chunk_text_joined
+                    question=qtext, summary=doc_summary, document=chunk_text_joined
                 )
                 user_msg = {"role": "user", "content": user_prompt}
                 calls.append(InferenceCall(messages=[user_msg], tags=["with_correct_chunk"]))
@@ -235,10 +213,7 @@ def _build_inference_calls_scenario(
 
 
 def _parse_and_assemble(
-    question_ds: Dataset,
-    responses_dict: Dict[str, List[str]],
-    row_map: List[int],
-    scenario: str
+    question_ds: Dataset, responses_dict: Dict[str, List[str]], row_map: List[int], scenario: str
 ) -> Dataset:
     """
     For each model, parse <answer> from each response. We replicate the original row
@@ -297,9 +272,5 @@ def _build_doc_meta_map(chunked_ds: Dataset) -> Dict[str, Any]:
                 ctext = cdict.get("chunk_text", "")
                 chunk_map[cid] = ctext
 
-        meta_map[doc_id] = {
-            "document_text": doc_text,
-            "document_summary": doc_summary,
-            "chunks_map": chunk_map
-        }
+        meta_map[doc_id] = {"document_text": doc_text, "document_summary": doc_summary, "chunks_map": chunk_map}
     return meta_map
