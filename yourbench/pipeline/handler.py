@@ -1,4 +1,4 @@
-# handler.py
+    # handler.py
 # =============================================================================
 # Author: @sumukshashidhar
 #
@@ -49,6 +49,7 @@ DEFAULT_STAGE_ORDER: List[str] = [
     # "deduplicate_single_shot_questions", #TODO: either remove or uncomment when implemented
     # "deduplicate_multi_hop_questions",
     "lighteval",
+    "score_answer_binary",
 ]
 
 # This global list tracks the timing for all executed stages in the pipeline.
