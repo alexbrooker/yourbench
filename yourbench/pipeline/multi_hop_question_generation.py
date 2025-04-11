@@ -295,10 +295,7 @@ def _parse_and_build_final(
             qa_pairs = parse_qa_pairs_from_response(raw_resp)
 
             if not qa_pairs:
-                # Fallback row if no parseable QAs
-                logger.warning(
-                    f"No parseable JSON for row={row_idx}, doc_id={doc_id} (model={model_name})."
-                )
+                logger.warning(f"No parseable JSON for row={row_idx}, doc_id={doc_id} (model={model_name}).")
                 continue
 
             # Otherwise, process each QA pair
