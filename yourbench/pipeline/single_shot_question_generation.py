@@ -265,7 +265,9 @@ def _execute_inference(inference_calls, config: dict[str, Any]):
 
 
 def _process_responses_and_build_dataset(
-    responses_dict: dict[str, list[str]], call_index_mapping: list[tuple], stage_config: SingleShotQuestionGenerationConfig
+    responses_dict: dict[str, list[str]],
+    call_index_mapping: list[tuple],
+    stage_config: SingleShotQuestionGenerationConfig,
 ) -> Dataset:
     """
     Take the LLM responses, parse them, and build a Hugging Face Dataset

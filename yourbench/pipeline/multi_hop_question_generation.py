@@ -340,7 +340,9 @@ def _parse_and_build_final(
                         source_chunk_ids=source_chunk_ids,
                         generating_model=model_name,
                         raw_response=raw_resp,
-                        additional_instructions=stage_config.get("additional_instructions", "Generate questions to test a curious adult"),
+                        additional_instructions=stage_config.get(
+                            "additional_instructions", "Generate questions to test a curious adult"
+                        ),
                     )
                     final_multi_hop_questions.append(row_obj.__dict__)
 
