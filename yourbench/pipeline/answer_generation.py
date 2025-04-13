@@ -152,9 +152,7 @@ def _generate_answers_for_questions(
     logger.info(f"Appended {len(final_ds)} new answers to '{output_subset}' (scenario={scenario}).")
 
 
-def _build_inference_calls_scenario(
-    config: Dict[str, Any], question_ds: Dataset, scenario: str, source_subset: str
-):
+def _build_inference_calls_scenario(config: Dict[str, Any], question_ds: Dataset, scenario: str, source_subset: str):
     """
     Splits logic by scenario. Zero shot vs with_correct_chunk.
     We do not re-check scenario in each row; instead we do separate branches.
