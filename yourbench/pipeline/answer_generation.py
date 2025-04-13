@@ -18,6 +18,8 @@ Configuration Example (YAML):
     scenarios:
       - zero_shot
       - with_correct_chunk
+
+# TODO: Add global config schema validation across the project.
 """
 
 from typing import Any, Dict, List
@@ -58,24 +60,41 @@ def run(config: Dict[str, Any]) -> None:
     scenarios = stage_cfg.get("scenarios", ["zero_shot"])
     logger.info(f"answer_generation scenarios = {scenarios}")
 
+    pipeline_cfg = config.get("pipeline", {})
+
+    # Decide if single or multi-hop generation is even relevant
+    # (based on the pipeline config for single_shot_question_generation / multi_hop_question_generation)
+    run_single_shot = pipeline_cfg.get("single_shot_question_generation", {}).get("run", False)
+    run_multi_hop = pipeline_cfg.get("multi_hop_question_generation", {}).get("run", False)
+
     for scenario in scenarios:
+        # Fail early if scenario is not recognized
+        if scenario not in ("zero_shot", "with_correct_chunk"):
+            raise ValueError(f"Unrecognized scenario '{scenario}'. Must be 'zero_shot' or 'with_correct_chunk'.")
+
         logger.info(f"--- Starting scenario: {scenario} ---")
 
-        # Single-shot
-        _generate_answers_for_questions(
-            config=config,
-            source_subset="single_shot_questions",
-            scenario=scenario,
-            output_subset="single_shot_questions_with_answers",
-        )
+        # Single-shot, only if config indicates single-shot Q was generated
+        if run_single_shot:
+            _generate_answers_for_questions(
+                config=config,
+                source_subset="single_shot_questions",
+                scenario=scenario,
+                output_subset="single_shot_questions_with_answers",
+            )
+        else:
+            logger.debug("Skipping single_shot_answers because single_shot_question_generation.run=False.")
 
-        # Multi-hop
-        _generate_answers_for_questions(
-            config=config,
-            source_subset="multi_hop_questions",
-            scenario=scenario,
-            output_subset="multi_hop_questions_with_answers",
-        )
+        # Multi-hop, only if config indicates multi-hop Q was generated
+        if run_multi_hop:
+            _generate_answers_for_questions(
+                config=config,
+                source_subset="multi_hop_questions",
+                scenario=scenario,
+                output_subset="multi_hop_questions_with_answers",
+            )
+        else:
+            logger.debug("Skipping multi_hop_answers because multi_hop_question_generation.run=False.")
 
     logger.success("answer_generation stage complete.")
 
@@ -133,24 +152,30 @@ def _generate_answers_for_questions(
     logger.info(f"Appended {len(final_ds)} new answers to '{output_subset}' (scenario={scenario}).")
 
 
-def _build_inference_calls_scenario(config: Dict[str, Any], question_ds: Dataset, scenario: str, source_subset: str):
+def _build_inference_calls_scenario(
+    config: Dict[str, Any], question_ds: Dataset, scenario: str, source_subset: str
+):
     """
-    For each row in question_ds, build an InferenceCall with the appropriate prompt:
-     - "zero_shot" => use ZEROSHOT_QA_USER_PROMPT
-     - "with_correct_chunk" => retrieve chunk(s) from 'chunked' dataset and use GOLD_QA_USER_PROMPT
-
-    Returns (calls, row_map) for re-assembly after inference.
+    Splits logic by scenario. Zero shot vs with_correct_chunk.
+    We do not re-check scenario in each row; instead we do separate branches.
     """
     calls = []
     row_map = []
 
-    if "question" not in question_ds.column_names:
-        logger.error("Dataset missing 'question' column. Cannot build calls.")
-        return calls, row_map
+    if scenario == "zero_shot":
+        # We build calls for each row directly.
+        for i, row in enumerate(question_ds):
+            qtext = row.get("question", "")
+            if not qtext or not isinstance(qtext, str):
+                continue
 
-    doc_meta_map = {}
-    if scenario == "with_correct_chunk":
-        # Load chunked dataset to retrieve correct chunk text
+            user_prompt = ZEROSHOT_QA_USER_PROMPT.format(question=qtext)
+            user_msg = {"role": "user", "content": user_prompt}
+            calls.append(InferenceCall(messages=[user_msg], tags=["zero_shot"]))
+            row_map.append(i)
+
+    elif scenario == "with_correct_chunk":
+        # We'll need chunked data to find the relevant chunk(s)
         logger.info("Loading 'chunked' dataset to retrieve chunk text for with_correct_chunk scenario.")
         try:
             chunked_ds = custom_load_dataset(config, subset="chunked")
@@ -159,57 +184,61 @@ def _build_inference_calls_scenario(config: Dict[str, Any], question_ds: Dataset
             logger.error(f"Failed loading chunked dataset for scenario={scenario}: {e}")
             return calls, row_map
 
-    for i, row in enumerate(question_ds):
-        qtext = row.get("question", "")
-        if not qtext or not isinstance(qtext, str):
-            continue
+        for i, row in enumerate(question_ds):
+            qtext = row.get("question", "")
+            if not qtext or not isinstance(qtext, str):
+                continue
 
-        if scenario == "zero_shot":
-            user_prompt = ZEROSHOT_QA_USER_PROMPT.format(question=qtext)
-            user_msg = {"role": "user", "content": user_prompt}
-            calls.append(InferenceCall(messages=[user_msg], tags=["zero_shot"]))
-            row_map.append(i)
-
-        elif scenario == "with_correct_chunk":
-            doc_id = row.get("document_id", "")
+            doc_id, chunk_ids = _extract_chunk_ids_for_row(row, source_subset)
             if not doc_id:
                 logger.debug(f"Row {i} missing document_id, skipping with_correct_chunk.")
                 continue
 
-            # Single-shot uses 'chunk_id', multi-hop uses 'source_chunk_ids'
-            if source_subset.startswith("single_shot"):
-                chunk_id = row.get("chunk_id", "")
-                chunk_text = doc_meta_map.get(doc_id, {}).get("chunks_map", {}).get(chunk_id, "")
-                doc_summary = doc_meta_map.get(doc_id, {}).get("document_summary", "")
-                user_prompt = GOLD_QA_USER_PROMPT.format(question=qtext, summary=doc_summary, document=chunk_text)
-                user_msg = {"role": "user", "content": user_prompt}
-                calls.append(InferenceCall(messages=[user_msg], tags=["with_correct_chunk"]))
-                row_map.append(i)
+            # Summaries + chunk text
+            doc_summary = doc_meta_map.get(doc_id, {}).get("document_summary", "")
+            chunk_text_joined = _get_joined_chunks(doc_meta_map, doc_id, chunk_ids)
+            if not chunk_text_joined.strip():
+                logger.debug(f"No relevant chunk text for row {i}, doc_id={doc_id}. Skipping.")
+                continue
 
-            elif source_subset.startswith("multi_hop"):
-                chunk_ids = row.get("source_chunk_ids", [])
-                if not isinstance(chunk_ids, list):
-                    chunk_ids = []
-                doc_summary = doc_meta_map.get(doc_id, {}).get("document_summary", "")
-                combined_texts = []
-                for cid in chunk_ids:
-                    text_ = doc_meta_map.get(doc_id, {}).get("chunks_map", {}).get(cid, "")
-                    if text_:
-                        combined_texts.append(text_)
-                chunk_text_joined = "\n\n".join(combined_texts)
-
-                user_prompt = GOLD_QA_USER_PROMPT.format(
-                    question=qtext, summary=doc_summary, document=chunk_text_joined
-                )
-                user_msg = {"role": "user", "content": user_prompt}
-                calls.append(InferenceCall(messages=[user_msg], tags=["with_correct_chunk"]))
-                row_map.append(i)
-
-        else:
-            logger.warning(f"Unrecognized scenario '{scenario}' (row={i}), skipping.")
-            continue
+            user_prompt = GOLD_QA_USER_PROMPT.format(question=qtext, summary=doc_summary, document=chunk_text_joined)
+            user_msg = {"role": "user", "content": user_prompt}
+            calls.append(InferenceCall(messages=[user_msg], tags=["with_correct_chunk"]))
+            row_map.append(i)
 
     return calls, row_map
+
+
+def _extract_chunk_ids_for_row(row: Dict[str, Any], source_subset: str):
+    """
+    Extract the document_id and either the single-shot 'chunk_id' or multi-hop 'source_chunk_ids'.
+    Returns (doc_id, list_of_chunk_ids).
+    """
+    doc_id = row.get("document_id", "")
+    if source_subset.startswith("single_shot"):
+        cid = row.get("chunk_id", "")
+        return doc_id, [cid] if cid else []
+
+    elif source_subset.startswith("multi_hop"):
+        cid_list = row.get("source_chunk_ids", [])
+        if not isinstance(cid_list, list):
+            cid_list = []
+        return doc_id, cid_list
+
+    return "", []
+
+
+def _get_joined_chunks(doc_meta_map: Dict[str, Any], doc_id: str, chunk_ids: List[str]) -> str:
+    """
+    Retrieve and join text from multiple chunk_ids belonging to a single doc_id.
+    """
+    chunks_map = doc_meta_map.get(doc_id, {}).get("chunks_map", {})
+    chunk_texts = []
+    for cid in chunk_ids:
+        text_ = chunks_map.get(cid, "")
+        if text_:
+            chunk_texts.append(text_)
+    return "\n\n".join(chunk_texts)
 
 
 def _parse_and_assemble(
@@ -226,7 +255,11 @@ def _parse_and_assemble(
 
     for model_name, model_responses in responses_dict.items():
         logger.info(f"Processing {len(model_responses)} responses from model={model_name} for scenario={scenario}.")
+
+        # n_common is the minimum of the number of responses returned vs. how many calls we made,
+        # so that we can safely index into row_map and model_responses.
         n_common = min(len(model_responses), len(row_map))
+
         for idx in range(n_common):
             resp = model_responses[idx]
             row_idx = row_map[idx]
@@ -272,5 +305,9 @@ def _build_doc_meta_map(chunked_ds: Dataset) -> Dict[str, Any]:
                 ctext = cdict.get("chunk_text", "")
                 chunk_map[cid] = ctext
 
-        meta_map[doc_id] = {"document_text": doc_text, "document_summary": doc_summary, "chunks_map": chunk_map}
+        meta_map[doc_id] = {
+            "document_text": doc_text,
+            "document_summary": doc_summary,
+            "chunks_map": chunk_map,
+        }
     return meta_map
