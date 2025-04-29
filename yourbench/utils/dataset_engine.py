@@ -19,20 +19,21 @@ Usage remains identical:
 """
 
 from __future__ import annotations
-
 import os
 from typing import Any, Dict, Optional
+
+from loguru import logger
 
 from datasets import (
     Dataset,
     DatasetDict,
-    concatenate_datasets,
     load_dataset,
     load_from_disk,  # for local path loading
+    concatenate_datasets,
 )
 from huggingface_hub import HfApi, whoami
 from huggingface_hub.utils import HFValidationError, OfflineModeIsEnabled
-from loguru import logger
+
 
 __all__ = [
     "ConfigurationError",
@@ -96,8 +97,7 @@ def _get_full_dataset_repo_name(config: Dict[str, Any]) -> str:
 
     # Validate required parts ----------------------------------------------
     if dataset_name.startswith("$"):
-        raise ConfigurationError(
-            f"Environment variable for hf_dataset_name ('{dataset_name}') is not available.")
+        raise ConfigurationError(f"Environment variable for hf_dataset_name ('{dataset_name}') is not available.")
 
     if (not organization or organization.startswith("$")) and token and not offline:
         try:
