@@ -8,6 +8,7 @@ from loguru import logger
 
 from yourbench.analysis import run_analysis
 from yourbench.pipeline.handler import run_pipeline
+from yourbench.utils.config_generator import generate_and_save_config
 
 
 app = typer.Typer(
@@ -117,6 +118,27 @@ def gui() -> None:
     logger.info("Launching the Gradio UI...")
     # TODO: Implement your Gradio UI logic here
     raise NotImplementedError("GUI support is not yet implemented.")
+
+
+@app.command(help="Generate a YourBench configuration file interactively.")
+def generate_config(
+    output_path: Path = typer.Argument(
+        ...,
+        help="Path where the generated configuration file will be saved.",
+        dir_okay=False,
+    ),
+) -> None:
+    """
+    Generate a YourBench configuration file through an interactive CLI.
+    
+    This command walks you through the process of creating a configuration file
+    for YourBench, similar to the 'accelerate config' command.
+    
+    Example:
+        yourbench generate-config ./my_config.yaml
+    """
+    logger.info(f"Generating configuration file at {output_path}")
+    generate_and_save_config(str(output_path))
 
 
 def main() -> None:
