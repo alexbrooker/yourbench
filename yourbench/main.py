@@ -130,10 +130,10 @@ def generate_config(
 ) -> None:
     """
     Generate a YourBench configuration file through an interactive CLI.
-    
+
     This command walks you through the process of creating a configuration file
     for YourBench, similar to the 'accelerate config' command.
-    
+
     Example:
         yourbench generate-config ./my_config.yaml
     """
