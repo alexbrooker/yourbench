@@ -2,21 +2,21 @@
 Inference Engine For Yourbench - Now with true concurrency throttling and cost tracking.
 """
 
+import os
+import csv
 import time
 import uuid
-import asyncio
-import csv
-import os
 import atexit
-import collections
+import asyncio
 import datetime
+import collections
 from typing import Any, Dict, List, Optional
 from dataclasses import field, dataclass
 
+import tiktoken  # Added for token counting
 from dotenv import load_dotenv
 from loguru import logger
 from tqdm.asyncio import tqdm_asyncio
-import tiktoken # Added for token counting
 
 from huggingface_hub import AsyncInferenceClient
 
@@ -27,11 +27,12 @@ GLOBAL_TIMEOUT = 300
 
 # --- Cost Tracking Globals ---
 # Using defaultdict for easier accumulation
-_cost_data = collections.defaultdict(lambda: {'input_tokens': 0, 'output_tokens': 0, 'calls': 0})
-_individual_log_file = os.path.join('logs', 'inference_cost_log_individual.csv')
-_aggregate_log_file = os.path.join('logs', 'inference_cost_log_aggregate.csv')
+_cost_data = collections.defaultdict(lambda: {"input_tokens": 0, "output_tokens": 0, "calls": 0})
+_individual_log_file = os.path.join("logs", "inference_cost_log_individual.csv")
+_aggregate_log_file = os.path.join("logs", "inference_cost_log_aggregate.csv")
 _individual_header_written = False
 # --- End Cost Tracking Globals ---
+
 
 @dataclass
 class Model:
@@ -61,7 +62,7 @@ class InferenceCall:
 
     messages: List[Dict[str, str]]
     temperature: Optional[float] = None
-    tags: List[str] = field(default_factory=lambda: ["dev"]) # Tags will identify the 'stage'
+    tags: List[str] = field(default_factory=lambda: ["dev"])  # Tags will identify the 'stage'
     max_retries: int = 8
     seed: Optional[int] = None
 
@@ -70,21 +71,23 @@ class InferenceCall:
 class InferenceJob:
     inference_calls: List[InferenceCall]
 
+
 # --- Cost Tracking Helper Functions ---
+
 
 def _ensure_logs_dir():
     """Ensures the logs directory exists."""
-    os.makedirs('logs', exist_ok=True)
+    os.makedirs("logs", exist_ok=True)
+
 
 def _get_encoding(encoding_name: str = "cl100k_base") -> tiktoken.Encoding:
     """Gets a tiktoken encoding, defaulting to cl100k_base with fallback."""
     try:
         return tiktoken.get_encoding(encoding_name)
     except Exception as e:
-        logger.warning(
-            f"Failed to get encoding '{encoding_name}'. Falling back to 'cl100k_base'. Error: {e}"
-        )
+        logger.warning(f"Failed to get encoding '{encoding_name}'. Falling back to 'cl100k_base'. Error: {e}")
         return tiktoken.get_encoding("cl100k_base")
+
 
 def _count_tokens(text: str, encoding: tiktoken.Encoding) -> int:
     """Counts tokens in a single string."""
@@ -94,7 +97,8 @@ def _count_tokens(text: str, encoding: tiktoken.Encoding) -> int:
         return len(encoding.encode(text))
     except Exception as e:
         logger.error(f"Error counting tokens: {e}")
-        return 0 # Return 0 if encoding fails
+        return 0  # Return 0 if encoding fails
+
 
 def _count_message_tokens(messages: List[Dict[str, str]], encoding: tiktoken.Encoding) -> int:
     """Counts tokens in a list of messages, approximating OpenAI's format."""
@@ -102,17 +106,18 @@ def _count_message_tokens(messages: List[Dict[str, str]], encoding: tiktoken.Enc
     # Approximation based on OpenAI's cookbook: https://github.com/openai/openai-cookbook/blob/main/examples/How_to_count_tokens_with_tiktoken.ipynb
     # This might not be perfectly accurate for all models/providers but is a reasonable estimate.
     tokens_per_message = 3
-    tokens_per_name = 1 # If 'name' field is used (not common here)
+    tokens_per_name = 1  # If 'name' field is used (not common here)
 
     for message in messages:
         num_tokens += tokens_per_message
         for key, value in message.items():
-            if value: # Only count if value is not None or empty
-                 num_tokens += _count_tokens(str(value), encoding)
+            if value:  # Only count if value is not None or empty
+                num_tokens += _count_tokens(str(value), encoding)
             if key == "name":
                 num_tokens += tokens_per_name
     num_tokens += 3  # every reply is primed with <|start|>assistant<|message|>
     return num_tokens
+
 
 def _log_individual_call(model_name: str, input_tokens: int, output_tokens: int, tags: List[str], encoding_name: str):
     """Logs a single inference call's cost details."""
@@ -120,29 +125,31 @@ def _log_individual_call(model_name: str, input_tokens: int, output_tokens: int,
     try:
         _ensure_logs_dir()
         is_new_file = not os.path.exists(_individual_log_file)
-        mode = 'a' if not is_new_file else 'w'
+        mode = "a" if not is_new_file else "w"
 
-        with open(_individual_log_file, mode, newline='', encoding='utf-8') as f:
+        with open(_individual_log_file, mode, newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
             # Write header only if the file is new or header wasn't written yet in this run
             if is_new_file or not _individual_header_written:
-                writer.writerow(['timestamp', 'model_name', 'stage', 'input_tokens', 'output_tokens', 'encoding_used'])
-                _individual_header_written = True # Set flag for this run
+                writer.writerow(["timestamp", "model_name", "stage", "input_tokens", "output_tokens", "encoding_used"])
+                _individual_header_written = True  # Set flag for this run
 
-            stage = ";".join(tags) if tags else "unknown" # Join tags to represent the stage/context
+            stage = ";".join(tags) if tags else "unknown"  # Join tags to represent the stage/context
             timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
             writer.writerow([timestamp, model_name, stage, input_tokens, output_tokens, encoding_name])
     except Exception as e:
         logger.error(f"Failed to write to individual cost log: {e}")
 
+
 def _update_aggregate_cost(model_name: str, input_tokens: int, output_tokens: int):
     """Updates the global dictionary for aggregate costs."""
     try:
-        _cost_data[model_name]['input_tokens'] += input_tokens
-        _cost_data[model_name]['output_tokens'] += output_tokens
-        _cost_data[model_name]['calls'] += 1
+        _cost_data[model_name]["input_tokens"] += input_tokens
+        _cost_data[model_name]["output_tokens"] += output_tokens
+        _cost_data[model_name]["calls"] += 1
     except Exception as e:
         logger.error(f"Failed to update aggregate cost data: {e}")
+
 
 def _write_aggregate_log():
     """Writes the aggregated cost data to a file at program exit."""
@@ -153,15 +160,16 @@ def _write_aggregate_log():
 
         _ensure_logs_dir()
         logger.info(f"Writing aggregate cost log to {_aggregate_log_file}")
-        with open(_aggregate_log_file, 'w', newline='', encoding='utf-8') as f:
+        with open(_aggregate_log_file, "w", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
-            writer.writerow(['model_name', 'total_input_tokens', 'total_output_tokens', 'total_calls'])
+            writer.writerow(["model_name", "total_input_tokens", "total_output_tokens", "total_calls"])
             for model_name, data in sorted(_cost_data.items()):
-                writer.writerow([model_name, data['input_tokens'], data['output_tokens'], data['calls']])
+                writer.writerow([model_name, data["input_tokens"], data["output_tokens"], data["calls"]])
         logger.success(f"Aggregate cost log successfully written to {_aggregate_log_file}")
     except Exception as e:
         # Use print here as logger might be shutting down during atexit
         print(f"ERROR: Failed to write aggregate cost log: {e}", flush=True)
+
 
 # Register the aggregate log function to run at exit
 atexit.register(_write_aggregate_log)
@@ -260,13 +268,13 @@ async def _retry_with_backoff(model: Model, inference_call: InferenceCall, semap
                     attempt + 1,
                     model.max_concurrent_requests,
                 )
-                return await _get_response(model, inference_call) # Cost tracking happens inside _get_response
+                return await _get_response(model, inference_call)  # Cost tracking happens inside _get_response
             except Exception as e:
                 logger.error("Error invoking model {}: {}", model.model_name, e)
 
         # Only sleep if not on the last attempt
         if attempt < inference_call.max_retries - 1:
-            backoff_secs = 2 ** (attempt + 2) # Exponential backoff (4, 8, 16, ...)
+            backoff_secs = 2 ** (attempt + 2)  # Exponential backoff (4, 8, 16, ...)
             logger.debug("Backing off for {} seconds before next attempt...", backoff_secs)
             await asyncio.sleep(backoff_secs)
 
@@ -280,12 +288,12 @@ async def _retry_with_backoff(model: Model, inference_call: InferenceCall, semap
         encoding = _get_encoding(model.encoding_name)
         input_tokens = _count_message_tokens(inference_call.messages, encoding)
         _log_individual_call(model.model_name, input_tokens, 0, ["FAILED"] + inference_call.tags, model.encoding_name)
-        _update_aggregate_cost(model.model_name, input_tokens, 0) # Still counts the input attempt
+        _update_aggregate_cost(model.model_name, input_tokens, 0)  # Still counts the input attempt
         logger.warning(f"Logged failed call for {model.model_name} with input tokens {input_tokens}, output 0.")
     except Exception as cost_e:
         logger.error(f"Error during cost tracking for *failed* call {model.model_name}: {cost_e}")
 
-    return "" # Return empty string for failed calls
+    return ""  # Return empty string for failed calls
 
 
 async def _run_inference_async_helper(
@@ -370,14 +378,16 @@ def _load_models(base_config: Dict[str, Any], step_name: str) -> List[Model]:
             first_model_config["model_name"],
         )
         # Ensure 'encoding_name' is handled, defaulting if not present in config
-        return [Model(**{**first_model_config, 'encoding_name': first_model_config.get('encoding_name', 'cl100k_base')})]
+        return [
+            Model(**{**first_model_config, "encoding_name": first_model_config.get("encoding_name", "cl100k_base")})
+        ]
 
     # Filter out only those with a matching 'model_name'
     matched = []
     for m_config in all_configured_models:
         if m_config["model_name"] in role_models:
-             # Ensure 'encoding_name' is handled, defaulting if not present in config
-            model_instance = Model(**{**m_config, 'encoding_name': m_config.get('encoding_name', 'cl100k_base')})
+            # Ensure 'encoding_name' is handled, defaulting if not present in config
+            model_instance = Model(**{**m_config, "encoding_name": m_config.get("encoding_name", "cl100k_base")})
             matched.append(model_instance)
 
     logger.info(
@@ -421,4 +431,4 @@ def run_inference(
         # Ensure aggregate log is attempted even on critical error during run
         # Note: atexit should handle this, but adding a safeguard doesn't hurt
         # _write_aggregate_log() # Redundant due to atexit
-        return {} # Return empty on failure
+        return {}  # Return empty on failure
