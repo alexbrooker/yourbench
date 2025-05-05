@@ -2,7 +2,6 @@
 Inference Engine For Yourbench - Now with true concurrency throttling and cost tracking.
 """
 
-
 import os
 import csv
 import time
@@ -41,10 +40,15 @@ class Model:
     # You can find the list of available providers here: https://huggingface.co/docs/huggingface_hub/guides/inference#supported-providers-and-tasks
     provider: str | None = None
     base_url: str | None = None
-    api_key: str | None = None
+    api_key: str | None = field(default=None, repr=False)
+
     max_concurrent_requests: int = 16
     # Add encoding for tiktoken, default to cl100k_base as it's common (GPT, Qwen)
     encoding_name: str = "cl100k_base"
+
+    def __post_init__(self):
+        if self.api_key is None:
+            self.api_key = os.getenv("HF_TOKEN", None)
 
 
 @dataclass
