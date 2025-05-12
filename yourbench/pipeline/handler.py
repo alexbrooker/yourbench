@@ -89,11 +89,37 @@ def run_pipeline(
     config["debug"] = debug
     logger.info(f"Debug mode set to {config['debug']}")
 
-    # Extract pipeline portion of the config
+    # ── Identify which stages will actually run ─────────────────────────── #
     pipeline_config: Dict[str, Any] = config.get("pipeline", {})
     if not pipeline_config:
         logger.warning("No pipeline stages configured. Exiting pipeline execution.")
         return
+
+    # Normalize configuration for all stages
+    for stage_name in DEFAULT_STAGE_ORDER:
+        if stage_name not in pipeline_config:
+            continue
+            
+        stage_settings = pipeline_config.get(stage_name)
+        if not isinstance(stage_settings, dict):
+            pipeline_config[stage_name] = {"run": True}
+        elif "run" not in stage_settings:
+            pipeline_config[stage_name]["run"] = True
+
+    # Determine which stages to run
+    stages_to_run = [
+        s for s in DEFAULT_STAGE_ORDER
+        if s in pipeline_config and pipeline_config[s].get("run", False)
+    ]
+    
+    if not stages_to_run:
+        logger.warning("No pipeline stages enabled to run. Exiting pipeline execution.")
+        return
+        
+    config["__fast_mode_final_stage"] = stages_to_run[-1]
+    logger.info(
+        "Final active stage for this run = '{}'", config["__fast_mode_final_stage"]
+    )
 
     # Ensure logs directory exists to store stage-specific logs
     os.makedirs("logs", exist_ok=True)
@@ -102,23 +128,7 @@ def run_pipeline(
     pipeline_execution_start_time: float = time.time()
 
     # === Execute pipeline stages in the fixed default order ===
-    for stage_name in DEFAULT_STAGE_ORDER:
-        # Check if the stage is mentioned in the pipeline config at all
-        if stage_name not in pipeline_config:
-            logger.debug(f"Stage '{stage_name}' is not mentioned in the config. Skipping.")
-            continue
-
-        # Get the settings for the stage. It might be None or a dict.
-        stage_settings = pipeline_config.get(stage_name)
-        if not isinstance(stage_settings, dict):
-            pipeline_config[stage_name] = {"run": True}
-        elif "run" not in stage_settings:
-            pipeline_config[stage_name]["run"] = True
-
-        if not pipeline_config[stage_name]["run"]:
-            logger.info(f"Skipping stage: '{stage_name}' (run set to False).")
-            continue
-
+    for stage_name in stages_to_run:
         # Setup a stage-specific error log file
         error_log_path = os.path.join("logs", f"pipeline_{stage_name}.log")
         log_id = logger.add(error_log_path, level="ERROR", backtrace=True, diagnose=True, mode="a")
@@ -127,10 +137,11 @@ def run_pipeline(
         stage_start_time: float = time.time()
 
         # Ensure the specific stage config is at least an empty dict if it was None
-        if stage_name in config.get("pipeline", {}) and config["pipeline"][stage_name] is None:
-            config["pipeline"][stage_name] = {}
+        if pipeline_config[stage_name] is None:
+            pipeline_config[stage_name] = {}
 
         try:
+            config["__current_stage"] = stage_name
             # Dynamically import the stage module, e.g. yourbench.pipeline.ingestion
             stage_module = importlib.import_module(f"yourbench.pipeline.{stage_name}")
             stage_module.run(config)
