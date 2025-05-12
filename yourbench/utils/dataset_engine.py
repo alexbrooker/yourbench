@@ -335,7 +335,7 @@ def custom_save_dataset(
         logger.debug(f"[fast-mode] Cached subset '{subset}' (rows={len(dataset)})")
 
         final_stage = config.get("__fast_mode_final_stage")
-        if subset != final_stage:
+        if config.get("__current_stage") != final_stage:
             return
 
         logger.info("[fast-mode] Flushing in-RAM datasets to disk / Hub …")
