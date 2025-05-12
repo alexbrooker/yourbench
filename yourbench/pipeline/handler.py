@@ -99,7 +99,7 @@ def run_pipeline(
     for stage_name in DEFAULT_STAGE_ORDER:
         if stage_name not in pipeline_config:
             continue
-            
+
         stage_settings = pipeline_config.get(stage_name)
         if not isinstance(stage_settings, dict):
             pipeline_config[stage_name] = {"run": True}
@@ -107,19 +107,14 @@ def run_pipeline(
             pipeline_config[stage_name]["run"] = True
 
     # Determine which stages to run
-    stages_to_run = [
-        s for s in DEFAULT_STAGE_ORDER
-        if s in pipeline_config and pipeline_config[s].get("run", False)
-    ]
-    
+    stages_to_run = [s for s in DEFAULT_STAGE_ORDER if s in pipeline_config and pipeline_config[s].get("run", False)]
+
     if not stages_to_run:
         logger.warning("No pipeline stages enabled to run. Exiting pipeline execution.")
         return
-        
+
     config["__fast_mode_final_stage"] = stages_to_run[-1]
-    logger.info(
-        "Final active stage for this run = '{}'", config["__fast_mode_final_stage"]
-    )
+    logger.info("Final active stage for this run = '{}'", config["__fast_mode_final_stage"])
 
     # Ensure logs directory exists to store stage-specific logs
     os.makedirs("logs", exist_ok=True)

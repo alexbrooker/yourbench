@@ -7,21 +7,25 @@ from datasets import Dataset, DatasetDict, load_dataset, load_from_disk, concate
 from huggingface_hub import HfApi, whoami
 from huggingface_hub.utils import HFValidationError
 
+
 # --------------------------------------------------------------------------- #
 # FAST-EXPERIMENTAL MODE SUPPORT
 # --------------------------------------------------------------------------- #
 # If config["settings"]["experimental_fast_mode"] is True we keep every
 # subset in RAM until the *final* save coming from lighteval.
-_IN_MEMORY_DATASETS: Dict[str, Dataset] = {}   # subset_name  ->  Dataset
+_IN_MEMORY_DATASETS: Dict[str, Dataset] = {}  # subset_name  ->  Dataset
+
 
 def _fast_mode_on(cfg: Dict[str, Any]) -> bool:
     """Return True if the current run is in fast experimental mode."""
     return cfg.get("hf_configuration", {}).get("experimental_fast_mode", False)
 
+
 class ConfigurationError(Exception):
     """Exception raised for errors in the configuration."""
 
     pass
+
 
 def _safe_get_organization(config: Dict, dataset_name: str, organization: str, token: str) -> str:
     if not organization or (isinstance(organization, str) and organization.startswith("$")):
@@ -59,6 +63,7 @@ def _safe_get_organization(config: Dict, dataset_name: str, organization: str, t
             )
             organization = None  # Ensure organization is None if logic falls through
     return organization
+
 
 def _get_full_dataset_repo_name(config: Dict[str, Any]) -> str:
     """
@@ -151,6 +156,7 @@ def _get_full_dataset_repo_name(config: Dict[str, Any]) -> str:
         logger.exception(f"Unexpected error in _get_full_dataset_repo_name: {e}")
         raise ConfigurationError(f"Failed to determine dataset repo name: {e}") from e
 
+
 def custom_load_dataset(config: Dict[str, Any], subset: Optional[str] = None) -> Dataset:
     """
     Load a dataset subset from a local directory if specified, otherwise from Hugging Face.
@@ -195,6 +201,7 @@ def custom_load_dataset(config: Dict[str, Any], subset: Optional[str] = None) ->
             return Dataset.from_dict({})
         else:
             raise
+
 
 def _save_dataset_impl(
     dataset: Dataset,
@@ -314,6 +321,7 @@ def _save_dataset_impl(
             config_name=config_name,
         )
         logger.success(f"Dataset successfully pushed to HuggingFace Hub with repo_id='{dataset_repo_name}'")
+
 
 def custom_save_dataset(
     dataset: Dataset,
