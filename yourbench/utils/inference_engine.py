@@ -1,10 +1,13 @@
 """
 Inference Engine For Yourbench - Now with true concurrency throttling and cost tracking.
+Inference Engine For Yourbench - Now with true concurrency throttling and cost tracking.
 """
 
 import os
+import csv
 import time
 import uuid
+import atexit
 import asyncio
 import csv
 import atexit
@@ -13,6 +16,7 @@ import datetime
 from typing import Any, Dict, List, Optional
 from dataclasses import field, dataclass
 
+import tiktoken  # Added for token counting
 from dotenv import load_dotenv
 from loguru import logger
 from tqdm.asyncio import tqdm_asyncio
@@ -64,7 +68,7 @@ class InferenceCall:
 
     messages: List[Dict[str, str]]
     temperature: Optional[float] = None
-    tags: List[str] = field(default_factory=lambda: ["dev"])
+    tags: List[str] = field(default_factory=lambda: ["dev"])  # Tags will identify the 'stage'
     max_retries: int = 8
     seed: Optional[int] = None
 
@@ -206,6 +210,9 @@ async def _get_response(model: Model, inference_call: InferenceCall) -> str:
         model=model.model_name,
         messages=inference_call.messages,
         temperature=inference_call.temperature,
+        # Note: seed is not directly supported by chat_completion in huggingface_hub client API as of recent versions
+        # It might need to be passed via extra_body if the provider supports it.
+        # seed=inference_call.seed, # This might cause an error if not supported
     )
 
     # Safe-guarding in case the response is missing .choices
@@ -263,13 +270,13 @@ async def _retry_with_backoff(model: Model, inference_call: InferenceCall, semap
                     attempt + 1,
                     model.max_concurrent_requests,
                 )
-                return await _get_response(model, inference_call)
+                return await _get_response(model, inference_call)  # Cost tracking happens inside _get_response
             except Exception as e:
                 logger.error("Error invoking model {}: {}", model.model_name, e)
 
         # Only sleep if not on the last attempt
         if attempt < inference_call.max_retries - 1:
-            backoff_secs = 2 ** (attempt + 2)
+            backoff_secs = 2 ** (attempt + 2)  # Exponential backoff (4, 8, 16, ...)
             logger.debug("Backing off for {} seconds before next attempt...", backoff_secs)
             await asyncio.sleep(backoff_secs)
 
@@ -419,4 +426,7 @@ def run_inference(
         return asyncio.run(_run_inference_async_helper(models, inference_calls))
     except Exception as e:
         logger.critical("Error running inference for step '{}': {}", step_name, e)
-        return {}
+        # Ensure aggregate log is attempted even on critical error during run
+        # Note: atexit should handle this, but adding a safeguard doesn't hurt
+        # _write_aggregate_log() # Redundant due to atexit
+        return {}  # Return empty on failure
