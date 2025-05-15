@@ -9,10 +9,8 @@ import time
 import uuid
 import atexit
 import asyncio
-import csv
-import atexit
-import collections
 import datetime
+import collections
 from typing import Any, Dict, List, Optional
 from dataclasses import field, dataclass
 
@@ -20,7 +18,6 @@ import tiktoken  # Added for token counting
 from dotenv import load_dotenv
 from loguru import logger
 from tqdm.asyncio import tqdm_asyncio
-import tiktoken
 
 from huggingface_hub import AsyncInferenceClient
 
@@ -30,9 +27,9 @@ load_dotenv()
 GLOBAL_TIMEOUT = 300
 
 # Using defaultdict for easier accumulation
-_cost_data = collections.defaultdict(lambda: {'input_tokens': 0, 'output_tokens': 0, 'calls': 0})
-_individual_log_file = os.path.join('logs', 'inference_cost_log_individual.csv')
-_aggregate_log_file = os.path.join('logs', 'inference_cost_log_aggregate.csv')
+_cost_data = collections.defaultdict(lambda: {"input_tokens": 0, "output_tokens": 0, "calls": 0})
+_individual_log_file = os.path.join("logs", "inference_cost_log_individual.csv")
+_aggregate_log_file = os.path.join("logs", "inference_cost_log_aggregate.csv")
 _individual_header_written = False
 
 
@@ -80,7 +77,7 @@ class InferenceJob:
 
 def _ensure_logs_dir():
     """Ensures the logs directory exists."""
-    os.makedirs('logs', exist_ok=True)
+    os.makedirs("logs", exist_ok=True)
 
 
 def _get_encoding(encoding_name: str = "cl100k_base") -> tiktoken.Encoding:
@@ -88,9 +85,7 @@ def _get_encoding(encoding_name: str = "cl100k_base") -> tiktoken.Encoding:
     try:
         return tiktoken.get_encoding(encoding_name)
     except Exception as e:
-        logger.warning(
-            f"Failed to get encoding '{encoding_name}'. Falling back to 'cl100k_base'. Error: {e}"
-        )
+        logger.warning(f"Failed to get encoding '{encoding_name}'. Falling back to 'cl100k_base'. Error: {e}")
         return tiktoken.get_encoding("cl100k_base")
 
 
@@ -112,12 +107,12 @@ def _count_message_tokens(messages: List[Dict[str, str]], encoding: tiktoken.Enc
     # This might not be perfectly accurate for all models/providers but is a reasonable estimate.
     tokens_per_message = 3
     tokens_per_name = 1
-    
+
     for message in messages:
         num_tokens += tokens_per_message
         for key, value in message.items():
             if value:
-                 num_tokens += _count_tokens(str(value), encoding)
+                num_tokens += _count_tokens(str(value), encoding)
             if key == "name":
                 num_tokens += tokens_per_name
     num_tokens += 3
@@ -130,13 +125,13 @@ def _log_individual_call(model_name: str, input_tokens: int, output_tokens: int,
     try:
         _ensure_logs_dir()
         is_new_file = not os.path.exists(_individual_log_file)
-        mode = 'a' if not is_new_file else 'w'
+        mode = "a" if not is_new_file else "w"
 
-        with open(_individual_log_file, mode, newline='', encoding='utf-8') as f:
+        with open(_individual_log_file, mode, newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
             # Write header only if the file is new or header wasn't written yet in this run
             if is_new_file or not _individual_header_written:
-                writer.writerow(['timestamp', 'model_name', 'stage', 'input_tokens', 'output_tokens', 'encoding_used'])
+                writer.writerow(["timestamp", "model_name", "stage", "input_tokens", "output_tokens", "encoding_used"])
                 _individual_header_written = True
 
             stage = ";".join(tags) if tags else "unknown"
@@ -149,9 +144,9 @@ def _log_individual_call(model_name: str, input_tokens: int, output_tokens: int,
 def _update_aggregate_cost(model_name: str, input_tokens: int, output_tokens: int):
     """Updates the global dictionary for aggregate costs."""
     try:
-        _cost_data[model_name]['input_tokens'] += input_tokens
-        _cost_data[model_name]['output_tokens'] += output_tokens
-        _cost_data[model_name]['calls'] += 1
+        _cost_data[model_name]["input_tokens"] += input_tokens
+        _cost_data[model_name]["output_tokens"] += output_tokens
+        _cost_data[model_name]["calls"] += 1
     except Exception as e:
         logger.error(f"Failed to update aggregate cost data: {e}")
 
@@ -165,11 +160,11 @@ def _write_aggregate_log():
 
         _ensure_logs_dir()
         logger.info(f"Writing aggregate cost log to {_aggregate_log_file}")
-        with open(_aggregate_log_file, 'w', newline='', encoding='utf-8') as f:
+        with open(_aggregate_log_file, "w", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
-            writer.writerow(['model_name', 'total_input_tokens', 'total_output_tokens', 'total_calls'])
+            writer.writerow(["model_name", "total_input_tokens", "total_output_tokens", "total_calls"])
             for model_name, data in sorted(_cost_data.items()):
-                writer.writerow([model_name, data['input_tokens'], data['output_tokens'], data['calls']])
+                writer.writerow([model_name, data["input_tokens"], data["output_tokens"], data["calls"]])
         logger.success(f"Aggregate cost log successfully written to {_aggregate_log_file}")
     except Exception as e:
         # Use print here as logger might be shutting down during atexit
@@ -285,7 +280,7 @@ async def _retry_with_backoff(model: Model, inference_call: InferenceCall, semap
         model.model_name,
         inference_call.max_retries,
     )
-    
+
     try:
         encoding = _get_encoding(model.encoding_name)
         input_tokens = _count_message_tokens(inference_call.messages, encoding)
@@ -379,13 +374,15 @@ def _load_models(base_config: Dict[str, Any], step_name: str) -> List[Model]:
             step_name,
             first_model_config["model_name"],
         )
-        return [Model(**{**first_model_config, 'encoding_name': first_model_config.get('encoding_name', 'cl100k_base')})]
+        return [
+            Model(**{**first_model_config, "encoding_name": first_model_config.get("encoding_name", "cl100k_base")})
+        ]
 
     # Filter out only those with a matching 'model_name'
     matched = []
     for m_config in all_configured_models:
         if m_config["model_name"] in role_models:
-            model_instance = Model(**{**m_config, 'encoding_name': m_config.get('encoding_name', 'cl100k_base')})
+            model_instance = Model(**{**m_config, "encoding_name": m_config.get("encoding_name", "cl100k_base")})
             matched.append(model_instance)
 
     logger.info(
