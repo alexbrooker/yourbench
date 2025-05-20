@@ -5,7 +5,8 @@ from loguru import logger
 
 from datasets import Dataset, DatasetDict, load_dataset, load_from_disk, concatenate_datasets
 from huggingface_hub import HfApi, whoami
-from huggingface_hub.utils import HFValidationError
+from huggingface_hub.utils import HFValidationError, HfHubHTTPError
+from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_exception
 
 
 class ConfigurationError(Exception):
@@ -213,6 +214,31 @@ def custom_load_dataset(config: Dict[str, Any], subset: Optional[str] = None) ->
             raise
 
 
+# Define retry parameters
+RETRY_MAX_ATTEMPTS = 5
+RETRY_WAIT_SECONDS = 2
+
+
+def _is_http_429_error(exception: BaseException) -> bool:
+    """Check if the exception is an HfHubHTTPError with status code 429."""
+    return isinstance(exception, HfHubHTTPError) and exception.response.status_code == 429
+
+
+@retry(
+    wait=wait_fixed(RETRY_WAIT_SECONDS),
+    stop=stop_after_attempt(RETRY_MAX_ATTEMPTS),
+    retry=retry_if_exception(_is_http_429_error),
+)
+def _push_to_hub_with_retry(dataset: Dataset, repo_id: str, private: bool, config_name: str) -> None:
+    """Pushes the dataset to Hugging Face Hub with retry logic for 429 errors."""
+    logger.info(f"Attempting to push dataset to HuggingFace Hub with repo_id='{repo_id}'")
+    dataset.push_to_hub(
+        repo_id=repo_id,
+        private=private,
+        config_name=config_name,
+    )
+
+
 def custom_save_dataset(
     dataset: Dataset,
     config: Dict[str, Any],
@@ -338,9 +364,22 @@ def custom_save_dataset(
 
     if push_to_hub and not _is_offline_mode():
         logger.info(f"Pushing dataset to HuggingFace Hub with repo_id='{dataset_repo_name}'")
-        dataset.push_to_hub(
-            repo_id=dataset_repo_name,
-            private=config["hf_configuration"].get("private", True),
-            config_name=config_name,
-        )
-        logger.success(f"Dataset successfully pushed to HuggingFace Hub with repo_id='{dataset_repo_name}'")
+        try:
+            _push_to_hub_with_retry(
+                dataset=dataset,
+                repo_id=dataset_repo_name,
+                private=config["hf_configuration"].get("private", True),
+                config_name=config_name,
+            )
+            logger.success(f"Dataset successfully pushed to HuggingFace Hub with repo_id='{dataset_repo_name}'")
+        except HfHubHTTPError as e:
+            if e.response.status_code == 429:
+                logger.error(
+                    f"Failed to push dataset to HuggingFace Hub after {RETRY_MAX_ATTEMPTS} attempts due to 429 error: {e}"
+                )
+            else:
+                logger.error(f"Failed to push dataset to HuggingFace Hub: {e}")
+            # Potentially re-raise or handle as needed, for now just logging
+        except Exception as e:
+            logger.error(f"An unexpected error occurred during push_to_hub: {e}")
+            # Potentially re-raise or handle as needed
