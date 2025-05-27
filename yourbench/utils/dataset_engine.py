@@ -14,6 +14,7 @@ from datasets import (
     concatenate_datasets,
 )
 from huggingface_hub import HfApi, whoami
+from datasets.exceptions import DatasetNotFoundError
 from huggingface_hub.utils import HFValidationError
 
 
@@ -212,14 +213,46 @@ def custom_load_dataset(config: Dict[str, Any], subset: Optional[str] = None) ->
 
     # If subset name does NOT exist, return an empty dataset to avoid the crash:
     try:
-        return load_dataset(dataset_repo_name, name=subset, split="train")
+        logger.info(f"Attempting to load dataset '{dataset_repo_name}' with subset/config_name '{subset}' from Hub.")
+        hf_config = config.get("hf_configuration", {})
+        token = hf_config.get("token") or os.getenv("HF_TOKEN")  # Get token from config or env
+
+        return load_dataset(dataset_repo_name, name=subset, split="train", token=token)
+    except DatasetNotFoundError:  # Catches datasets.exceptions.DatasetNotFoundError
+        logger.warning(
+            f"Dataset '{dataset_repo_name}' not found on Hugging Face Hub. "
+            "This is expected if the dataset is being created for the first time or if the specific subset does not exist. "
+            "Returning empty dataset for concatenation check."
+        )
+        return Dataset.from_dict({})
     except ValueError as e:
-        # If the config was not found, we create an empty dataset
-        if "BuilderConfig" in str(e) and "not found" in str(e):
-            logger.warning(f"No existing subset '{subset}'. Returning empty dataset.")
+        # Handle cases where the dataset exists, but the specific subset (config name) does not.
+        if subset and "BuilderConfig" in str(e) and f"'{subset}'" in str(e) and "not found" in str(e):
+            logger.warning(
+                f"Subset/config_name '{subset}' not found in existing dataset '{dataset_repo_name}'. "
+                "Returning empty dataset for concatenation check."
+            )
+            return Dataset.from_dict({})
+        # Handle cases where the dataset/subset exists, but the common 'train' split is not found.
+        elif (
+            ("split" in str(e).lower() and "not found" in str(e).lower()) or ("unknown split" in str(e).lower())
+        ) and "train" in str(e).lower():  # Check specifically for 'train' if that's assumed
+            logger.warning(
+                f"Assumed 'train' split not found for dataset '{dataset_repo_name}' (subset: {subset}). "
+                "Returning empty dataset for concatenation check. Error: {e}"
+            )
             return Dataset.from_dict({})
         else:
-            raise
+            # For other ValueErrors, they might indicate more serious issues not related to mere absence.
+            logger.error(
+                f"Unexpected ValueError while trying to load dataset '{dataset_repo_name}' (subset: {subset}) for concatenation: {e}"
+            )
+            raise  # Re-raise other ValueErrors
+    except Exception as e:  # Catch-all for other unexpected errors during load_dataset
+        logger.error(
+            f"An unexpected error occurred while loading dataset '{dataset_repo_name}' (subset: {subset}): {e}. Returning empty dataset as a fallback."
+        )
+        return Dataset.from_dict({})
 
 
 def custom_save_dataset(
@@ -336,26 +369,57 @@ def custom_save_dataset(
                 raise
 
     if config["hf_configuration"].get("concat_if_exist", False) and not _is_offline_mode():
-        existing_dataset = custom_load_dataset(config=config, subset=subset)
+        logger.info(
+            f"Concatenation enabled. Attempting to load existing dataset (repo: '{dataset_repo_name}', subset: '{subset}')."
+        )
+        existing_dataset = None  # Initialize
+        try:
+            existing_dataset = custom_load_dataset(config=config, subset=subset)
+        except Exception as e:
+            # This catch block is a safety net if custom_load_dataset itself fails unexpectedly,
+            # despite its internal error handling (e.g., if it re-raises an error).
+            logger.warning(
+                f"Failed to load existing dataset for concatenation due to an unexpected error: {e}. Skipping concatenation."
+            )
+            # existing_dataset remains None
 
-        # Check and cast the 'choices' column of the new dataset if necessary
-        if "choices" in dataset.features:
-            current_choices_feature = dataset.features["choices"]
-            # Check if it's Sequence(Value('null'))
-            if (
-                isinstance(current_choices_feature, Sequence)
-                and isinstance(current_choices_feature.feature, Value)
-                and current_choices_feature.feature.dtype == "null"
-            ):
-                logger.info(
-                    "Casting 'choices' column from Sequence(Value('null')) to Sequence(Value('string')) before concatenation."
+        if existing_dataset and existing_dataset.num_rows > 0:
+            logger.info(
+                f"Existing dataset found with {existing_dataset.num_rows} rows. Proceeding with concatenation."
+            )
+
+            # Original 'choices' casting logic for the NEW dataset
+            if "choices" in dataset.features:
+                current_choices_feature = dataset.features["choices"]
+                if (
+                    isinstance(current_choices_feature, Sequence)
+                    and isinstance(current_choices_feature.feature, Value)
+                    and current_choices_feature.feature.dtype == "null"
+                ):
+                    logger.info(
+                        "Casting 'choices' column of the new dataset from Sequence(Value('null')) to Sequence(Value('string')) before concatenation."
+                    )
+                    new_features_dict = dataset.features.copy()
+                    new_features_dict["choices"] = Sequence(Value("string"))
+                    dataset = dataset.cast(Features(new_features_dict))
+
+            try:
+                # Attempt to concatenate the datasets
+                dataset = concatenate_datasets([existing_dataset, dataset])
+                logger.success(
+                    f"Successfully concatenated new dataset with the existing one (total rows: {dataset.num_rows})."
                 )
-                new_features_dict = dataset.features.copy()
-                new_features_dict["choices"] = Sequence(Value("string"))
-                dataset = dataset.cast(Features(new_features_dict))
-
-        dataset = concatenate_datasets([existing_dataset, dataset])
-        logger.info("Concatenated dataset with an existing one")
+            except Exception as e:
+                logger.error(
+                    f"Error during concatenation of datasets: {e}. "
+                    f"This might be due to schema mismatch or other issues. Saving only the new data (rows: {dataset.num_rows})."
+                )
+                # Fallback: `dataset` remains the new data; concatenation failed. Original `dataset` (new data) will be pushed.
+        else:
+            logger.info(
+                f"Existing dataset (repo: '{dataset_repo_name}', subset: '{subset}') not found, is empty, or failed to load. "
+                f"Skipping concatenation. Proceeding with the new dataset only (rows: {dataset.num_rows})."
+            )
 
     if subset:
         config_name = subset
