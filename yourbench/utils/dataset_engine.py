@@ -3,7 +3,7 @@ from typing import Any, Dict, Optional
 
 from loguru import logger
 
-from datasets import Dataset, DatasetDict, load_dataset, load_from_disk, concatenate_datasets
+from datasets import Dataset, DatasetDict, load_dataset, load_from_disk, concatenate_datasets, Features, Value, Sequence
 from huggingface_hub import HfApi, whoami
 from huggingface_hub.utils import HFValidationError
 
@@ -328,6 +328,20 @@ def custom_save_dataset(
 
     if config["hf_configuration"].get("concat_if_exist", False) and not _is_offline_mode():
         existing_dataset = custom_load_dataset(config=config, subset=subset)
+
+        # Check and cast the 'choices' column of the new dataset if necessary
+        if "choices" in dataset.features:
+            current_choices_feature = dataset.features["choices"]
+            # Check if it's Sequence(Value('null'))
+            if isinstance(current_choices_feature, Sequence) and \
+               isinstance(current_choices_feature.feature, Value) and \
+               current_choices_feature.feature.dtype == 'null':
+                
+                logger.info("Casting 'choices' column from Sequence(Value('null')) to Sequence(Value('string')) before concatenation.")
+                new_features_dict = dataset.features.copy()
+                new_features_dict["choices"] = Sequence(Value("string"))
+                dataset = dataset.cast(Features(new_features_dict))
+        
         dataset = concatenate_datasets([existing_dataset, dataset])
         logger.info("Concatenated dataset with an existing one")
 
