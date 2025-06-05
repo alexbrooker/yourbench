@@ -50,19 +50,24 @@ YourBench is available on PyPI and requires **Python 3.12+**. You can install it
   ```bash
   git clone https://github.com/huggingface/yourbench.git
   cd yourbench
-  
-  # uv, recommended
+
+  # uv (recommended)
   uv venv
   source .venv/bin/activate
-  uv pip install -e .
 
-  # pip
-  pip install -e .
-  ```
+  # install core dependencies
+  uv sync
 
-  Installing from source is recommended if you want the latest updates or to run the included example configuration.
+  # optional: install semantic-related features (torch, transformers, etc.)
+  uv sync --extra semantic
 
-> **Note:** If you plan to use models that require API access (e.g. OpenAI GPT-4o or Hugging Face Inference API), make sure to have the appropriate credentials. You’ll also need a Hugging Face token (to optionally to upload results). See below for how to configure these before running YourBench.
+  # or install everything
+  uv sync --all-extras
+```
+
+Installing from source is recommended if you want the latest updates or to run the included example configuration.
+
+> **Note:** If you plan to use semantic features ... you plan to use semantic features (e.g. perplexity, readability metrics, or semantic chunking), run `uv sync --extra semantic`. If you're using models that require API access (e.g. OpenAI GPT-4o or Hugging Face Inference API), make sure to have valid credentials set via .env. See below for instructions.
 
 ## Quickstart Usage
 
