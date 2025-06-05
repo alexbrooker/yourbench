@@ -28,6 +28,16 @@ dependencies = [
     "typer>=0.15.2",
 ]
 
+[project.optional-dependencies]
+semantic = [
+    "torch",
+    "transformers",
+    "evaluate",
+    "textstat"
+]
+
+all = ["yourbench[semantic]"]
+
 [project.scripts]
 yourbench = "yourbench.main:main"
 
