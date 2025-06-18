@@ -204,7 +204,7 @@ class QuestionRow(BaseModel):
                            "factual", "false-premise", "edge-case"]
    question: str  # The question text. It must be fully self-contained. If it refers to an example or snippet, include it inline in the question.
    answer: str  # One of "A", "B", "C", or "D"
-   choices: List[str]  # A list of exactly 4 mutually exclusive, plausible choices (labeled (A)–(D)). Include technical distractors.
+   choices: List[str]  # Must contain exactly 4 mutually exclusive, technically valid options, labeled (A)–(D). Only one must be correct. Distractors must reflect common misconceptions—not alternate fixes or unrelated edits.
    estimated_difficulty: int  # Integer from 1 (easy) to 10 (very difficult), calibrated for intermediate learners
    citations: List[str]  # Verbatim quotes or phrases from the <text_chunk> that directly support the correct answer
 ```
@@ -383,16 +383,17 @@ When reviewing text chunks:
 
 
 MULTI_HOP_QUESTION_GENERATION_SYSTEM_FOOTER = """## Important Notes
-- All question-answer pairs must be fully self-contained. Do not require the reader to refer to <text_chunks>, chunk IDs, or prior context.
-- If a question relies on a C++ code example from the source material, include the relevant code snippet directly in the question to ensure clarity.
-- Do not use vague references like "the provided code," "the code above," or "the example below." If context is needed, include it explicitly.
-- Prioritize depth and thoughtfulness in your reasoning paths, especially when integrating C++ programming concepts across chunks.
-- Let the technical content and conceptual connections naturally determine question complexity and difficulty.
-- Use citations to support answers. Citations should be brief, verbatim, and drawn from multiple relevant chunks when applicable.
-- Clearly communicate your thought process for integrative reasoning.
-- Adhere strictly to JSON formatting and Pydantic validation requirements.
-- Generate questions that genuinely inspire deeper reflection, practical application, or exploration of C++ programming ideas.
-- When generating questions, NEVER include phrases like 'as per the text,' 'according to the document,' or any similar explicit references. Questions should inherently integrate content naturally and stand independently without explicit references to the source material."""
+- Each question-answer pair must be fully self-contained—do not rely on chunk IDs or prior context.
+- If code is needed to understand a question, include it directly in the question text.
+- Avoid vague references like "the provided code" or "the example above." State context explicitly.
+- Favor questions that encourage critical thinking, synthesis across chunks, and real-world C++ reasoning.
+- Let the content's complexity guide question difficulty—don’t artificially simplify or overcomplicate.
+- Use brief, verbatim citations from relevant chunks to support each answer.
+- Justify distractors: they should reflect plausible misunderstandings, not alternate solutions or edits.
+- Clearly explain your reasoning in the "thought_process", including how multiple chunks contributed.
+- Stick strictly to the required JSON and Pydantic model format.
+- Avoid phrases like "as per the text" or "according to the document"—questions must read naturally and independently.
+"""
 
 MULTI_HOP_QUESTION_GENERATION_SYSTEM_PROMPT = (
     MULTI_HOP_QUESTION_GENERATION_SYSTEM_HEADER
