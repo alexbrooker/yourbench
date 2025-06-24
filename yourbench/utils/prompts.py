@@ -2,7 +2,7 @@
 This module contains the prompts for the pipeline stages.
 """
 
-SUMMARIZATION_USER_PROMPT = """You are an AI assistant tasked with analyzing and summarizing technical documents, specifically C++ tutorials, lectures, and documentation. Your goal is to generate a concise yet comprehensive summary of the given content. Follow these steps carefully:
+SUMMARIZATION_USER_PROMPT = """You are an AI assistant tasked with analyzing and summarizing technical documents, specifically C++ tutorials, lectures, documentation, blogposts, and code examples. Your goal is to generate a concise yet comprehensive summary of the given content. Follow these steps carefully:
 
 1. You will be provided with a document. This document may be very long and/or split into multiple contiguous sections. It may contain unnecessary artifacts such as links, HTML tags, or other web-related elements, as well as C++ code snippets.
 
@@ -41,133 +41,88 @@ SUMMARIZATION_USER_PROMPT = """You are an AI assistant tasked with analyzing and
 
 Remember, your task is to provide a clear, accurate, and concise summary of the technical content, including relevant C++ code insights, while disregarding web artifacts or unrelated elements."""
 
+# Shared blocks
 
-QUESTION_GENERATION_SYSTEM_PROMPT_HEADER = """## Your Role
+BASE_PROMPT_RULES = """
+General Requirements:
+- All questions must focus on C++ concepts, behavior, syntax, or idioms. Discard questions that are not directly related to C++ programming.
+- Assume the reader has no access to the original document — all context must be included in the question.
+- Do not use vague phrases like "the code above", "this function", or "the snippet below".
+- Each question is a stand-alone one.
 
-You are an expert educational content creator specializing in crafting thoughtful, rich, and engaging questions based on technical documents, particularly C++ tutorials, lectures, and documentation. Your goal is to produce meaningful, moderately challenging question-answer pairs that encourage reflection, insight, and deep understanding of programming concepts, tailored specifically according to provided instructions.
+Symbol References:
+- Any class, function, method, variable, or flag mentioned in a question must:
+  (a) appear explicitly in the <text_chunk>, and
+  (b) have its full definition or relevant behavior included in the question as a fenced C++ code block.
+- If the symbol or behavior is missing from <text_chunk>, or cannot be shown inline, the question must be discarded.
 
-## Input Structure
+Code Usage:
+- All C++ code included in questions or answers must be wrapped in fenced code blocks with language specified as `cpp`. Example:
+  ```cpp
+  // Your C++ example here
+"""
 
-Your input consists of:
+DOCUMENT_ANALYSIS_REQUIREMENT = """
+Begin your output with a <document_analysis> block.
 
-<additional_instructions>
-[Specific instructions, preferences, or constraints guiding the question creation.]
-</additional_instructions>
+This block should briefly explain:
+- The central C++ concepts and themes covered across the text
+- Important syntax, behaviors, or idioms (e.g., lifetime rules, pointer semantics, template patterns)
+- Common misconceptions or subtle implementation details that may confuse learners
+- Any code examples, patterns, or inline comments that provide useful context for constructing meaningful questions
 
-<title>
-[Document title]
-</title>
+Focus on insights that justify the question choices, highlight reasoning challenges, or reveal conceptual depth.
+"""
 
-<document_summary>
-[Concise summary providing contextual background and overview.]
-</document_summary>
+# Base models
 
-<text_chunk>
-[The single text segment to analyze, which may include code examples and explanations.]
-</text_chunk>
-
-## Primary Objective
-
-Your goal is to generate a thoughtful set of question-answer pairs from the provided `<text_chunk>`. Aim for moderate complexity that encourages learners to deeply engage with the C++ content, reflect on programming concepts, and clearly demonstrate their understanding.
-
-Focus only on the `<text_chunk>` for generating questions; do not rely on `<document_summary>` or `<title>` as sources of factual content.
-
-### Context Fields:
-
-- `<title>`: Contextualizes the C++ topic or concept.
-- `<document_summary>`: Brief overview providing technical context.
-- `<text_chunk>`: The sole source text, which may include C++ code snippets, technical explanations, and examples.
-- `<additional_instructions>`: Instructions that influence question style, content, and complexity.
-
-## Analysis Phase
-
-Conduct careful analysis within `<document_analysis>` XML tags, following these steps:
-
-1. **Technical Content Examination**
-   - Identify the central programming concepts, syntax, idioms, and logic patterns in the text chunk.
-
-2. **Concept and Code Exploration**
-   - Consider how C++ features, constructs, or examples are presented. Evaluate their usage, correctness, potential pitfalls, and best practices.
-
-3. **Strategic Complexity Calibration**
-   - Thoughtfully rate difficulty (1–10), ensuring moderate technical challenge aligned with the additional instructions.
-
-4. **Intentional Question Planning**
-   - Design questions that highlight understanding of syntax, semantics, use cases, and problem-solving involving C++.
-   - If a question cannot be made self-contained due to missing context, rephrase it to either incorporate the needed context or drop it entirely.
-
-## Additional Instructions for Handling Irrelevant or Bogus Information
-
-### Identification and Ignoring of Irrelevant Information:
-
-- **Irrelevant Elements:** Explicitly disregard hyperlinks, advertisements, headers, footers, navigation menus, disclaimers, social media buttons, or any non-technical web elements.
-- **Bogus Information:** Detect and exclude any content that is syntactically invalid, nonsensical, or disconnected from meaningful programming instruction.
-
-### Decision Criteria for Question Generation:
-
-- **Meaningful Technical Content Requirement:** Only generate questions if the `<text_chunk>` includes valid and coherent C++ instructional or reference material.
-- **Complete Irrelevance:** If the entire `<text_chunk>` lacks technical value (e.g., only HTML, footers, or marketing), state this in your analysis and DO NOT generate questions.
-
-### Documentation in Analysis:
-
-- Justify inclusion or exclusion decisions clearly in `<document_analysis>` tags.
-- Briefly explain any decision not to generate questions due to irrelevance or lack of technical value.
-
-## Question Generation Guidelines
-
-### Encouraged Question Characteristics:
-
-- **Technical Depth**: Prioritize questions that probe C++ understanding (e.g., memory management, control structures, object-oriented principles, templates).
-- **Moderate Complexity**: Balance difficulty to challenge without overwhelming, aligned with learner skill level and topic.
-- **Self-contained Clarity**: Each question-answer pair must be fully self-contained, meaning a learner should be able to understand and answer the question without accessing the original document, `<document_summary>`, or any external content. Avoid vague references like "as shown above" or "in the example."
-- **Concrete Examples**: If a question refers to a specific code example, include the code directly in the question text so it is fully self-contained.
-- **Pedagogical Value**: Questions should reinforce comprehension of C++ principles, usage, and common patterns.
-- **Conversational Tone**: Use approachable, instructive language while preserving technical clarity.
-- **Avoid Redundancy**: Do not generate multiple questions that ask about the same concept in only slightly different ways.
-
-### Permitted Question Types:
-
-- Analytical
-- Application-based
-- Clarification
-- Counterfactual
-- Conceptual
-- True-False
-- Factual
-- Open-ended
-- False-premise
-- Edge-case
-
-(You do not need to use every question type, only those naturally fitting the content and instructions.)"""
-
-QUESTION_GENERATION_SYSTEM_PROMPT_OUTPUT = """## Output Structure
-
-This prompt is used exclusively for generating **open-ended** questions from technical C++ content.
-
-Present your final output as a list of JSON objects strictly adhering to this Pydantic model, wrapped within `<output_json>` XML tags:
-
+OPEN_ENDED_MODEL = """
 ```python
 class QuestionRow(BaseModel):
-    thought_process: str  # Clear, detailed rationale for selecting this question and the reasoning process
-    question_type: Literal["analytical", "application-based", "clarification",
-                           "counterfactual", "conceptual", "true-false",
-                           "factual", "open-ended", "false-premise", "edge-case"]
-    question: str  # A fully self-contained, well-phrased question. If it refers to a code example, include the code inline.
-    answer: str  # A full, self-contained answer based only on the <text_chunk>. Do not require external references.
-    estimated_difficulty: int  # Difficulty level from 1 (easy) to 10 (very difficult), based on the complexity of reasoning required
-    citations: List[str]  # Verbatim quotes from <text_chunk> that support the answer. These must be factual and precise.
+   thought_process: str  # Explain why this question was selected, what concept it targets, and how the <text_chunk> supports it.
+                        # Confirm that any referenced class, function, method, variable, or flag appears explicitly in the <text_chunk>.
+                        # Confirm that any referenced symbol has its relevant code included in the question as a fenced C++ block.
+                        # If the question is about behavior, state changes, or return values, include the exact code that shows this behavior.
+                        # Discard any question that depends on context not present in the <text_chunk>, such as project goals or external knowledge.
+   question_type: Literal["analytical", "application-based", "clarification",
+                          "counterfactual", "conceptual", "true-false",
+                          "factual", "open-ended", "false-premise", "edge-case", "troubleshooting"]
+   question: str  # A fully self-contained question. If referencing any code, include the full code snippet directly in the question.
+   answer: str  # A complete, self-contained answer that depends solely on the <text_chunk>.
+   estimated_difficulty: int  # Integer from 1 (easy) to 10 (very difficult), targeting an advanced C++ learner. Ultra-hard questions should target difficulty 9–10 and require multiple layers of reasoning, non-obvious behavior, or deep standard knowledge.
+   citations: List[str]  # Exact quotes from <text_chunk> that justify the answer. Must be factual and specific.
 ```
+"""
 
+MULTIPLE_CHOICE_MODEL = """
+```python
+class QuestionRow(BaseModel):
+   thought_process: str  # Explain why this question was selected, what concept it targets, and how the <text_chunk> supports it.
+                        # Confirm that any referenced class, function, method, variable, or flag appears explicitly in the <text_chunk>.
+                        # Confirm that any referenced symbol has its relevant code included in the question as a fenced C++ block.
+                        # If the question is about behavior, state changes, or return values, include the exact code that shows this behavior.
+                        # Discard any question that depends on context not present in the <text_chunk>, such as project goals or external knowledge.
+   question_type: Literal["analytical", "application-based", "clarification",
+                          "counterfactual", "conceptual", "true-false",
+                          "factual", "false-premise", "edge-case", "troubleshooting"]
+   question: str  # Fully self-contained question. If it mentions a code snippet or behavior, the relevant code must be included inline.
+   answer: str  # One of "A", "B", "C", or "D"
+   choices: List[str]  # Exactly 4 options (A–D), clearly distinct. Only one is correct. Distractors must reflect realistic misunderstandings, not arbitrary edits or vague errors.
+   estimated_difficulty: int  # Integer from 1 (easy) to 10 (very difficult), targeting an advanced C++ learner. Ultra-hard questions should target difficulty 9–10 and require multiple layers of reasoning, non-obvious behavior, or deep standard knowledge.
+   citations: List[str]  # Verbatim quotes or phrases from the <text_chunk> that directly support the correct answer
+```
+"""
+
+EXAMPLE_OPEN_ENDED_OUTPUT = """
 ## Output Format
 
-Begin by thoughtfully analyzing the provided C++ <text_chunk> within <document_analysis> XML tags.
-Focus on programming logic, syntax usage, C++ features, and conceptual clarity. Maintain technical precision, especially when referencing code or rules.
+{DOCUMENT_ANALYSIS_REQUIREMENT}
 
-Then output a list of valid QuestionRow JSON objects inside <output_json> XML tags. The list must be valid JSON.
+Wrap your output in <output_json> tags. Output a list of QuestionRow objects using this model:
 
+{OPEN_ENDED_MODEL}
 
 ## Example:
-
 <document_analysis>
 Key concept: Virtual functions and polymorphism in C++
 Facts: Virtual functions allow derived classes to override behavior
@@ -185,41 +140,22 @@ Reasoning cues: Importance of virtual destructors and dynamic dispatch in memory
     "citations": [
       "Virtual functions allow overriding behavior in derived classes.",
       "Virtual destructors ensure proper cleanup during polymorphic deletion."
-    ],
-  },
-  ...
+    ]
+  }
 ]
 </output_json>
 """
 
-QUESTION_GENERATION_SYSTEM_PROMPT_OUTPUT_MULTI = """## Output Structure
-
-Present your final output as JSON objects strictly adhering to this schema, enclosed within `<output_json>` XML tags. This structure supports both open-ended and multiple-choice questions derived from C++ technical material.
-
-```python
-class QuestionRow(BaseModel):
-   thought_process: str  # Clear reasoning for why this question was generated, including distractor logic and insight into learning value
-   question_type: Literal["analytical", "application-based", "clarification",
-                           "counterfactual", "conceptual", "true-false",
-                           "factual", "false-premise", "edge-case"]
-   question: str  # The question text. It must be fully self-contained. If it refers to an example or snippet, include it inline in the question.
-   answer: str  # One of "A", "B", "C", or "D"
-   choices: List[str]  # Must contain exactly 4 mutually exclusive, technically valid options, labeled (A)–(D). Only one must be correct. Distractors must reflect common misconceptions—not alternate fixes or unrelated edits.
-   estimated_difficulty: int  # Integer from 1 (easy) to 10 (very difficult), calibrated for intermediate learners
-   citations: List[str]  # Verbatim quotes or phrases from the <text_chunk> that directly support the correct answer
-```
-
+EXAMPLE_MC_OUTPUT = """
 ## Output Format
 
-1. Begin with a technical analysis of the <text_chunk> inside <document_analysis> tags.
-   - Highlight key concepts, tricky syntax, C++ rules, or common misconceptions.
-   - Note any code patterns or features that justify your question construction.
-2. Then, generate a list of QuestionRow objects in valid JSON format, wrapped inside <output_json> tags.
-   - Ensure proper formatting (no trailing commas).
-   - Each question must be self-contained — no "refer to the text" or "as seen above".
+{DOCUMENT_ANALYSIS_REQUIREMENT}
+
+Wrap your output in <output_json> tags. Output a list of QuestionRow objects using this model:
+
+{MULTIPLE_CHOICE_MODEL}
 
 ## Example:
-
 <document_analysis>
 Key concept: Virtual functions and inheritance in C++
 Facts: Virtual functions enable runtime polymorphism; destructors must be virtual to avoid undefined behavior
@@ -241,31 +177,75 @@ Reasoning cues: Common misuse of non-virtual destructors in base classes
     ],
     "estimated_difficulty": 7,
     "citations": ["A virtual destructor ensures proper cleanup when deleting derived objects through base class pointers."]
-  },
-  ...
+  }
 ]
-</output_json>"""
+</output_json>
+"""
 
-QUESTION_GENERATION_SYSTEM_PROMPT_FOOTER = """## Important Notes
-- Strive to generate questions that inspire genuine curiosity, reflection, and thoughtful engagement, especially around technical C++ concepts and code behavior.
-- Every question and answer must be fully self-contained. Do not assume the user can refer to the original <text_chunk>.
-- If a question references a code example, include that code inline in the question text to preserve clarity and independence.
-- Do not use vague references like "the provided code," "the code above," or "the example below." If context is needed, include it explicitly.
-- Citations must be short, verbatim quotes from <text_chunk> that directly support the answer. Include code lines only when they clarify key behaviors.
-- Ensure complexity and depth reflect thoughtful moderation as guided by the additional instructions.
-- Each "thought_process" must clearly explain the reasoning behind the question and, for multiple-choice questions, the logic behind distractor choices and why the correct answer stands out.
-- Ensure rigorous adherence to JSON formatting and the provided Pydantic validation model.
-- When generating questions, NEVER include phrases like 'as per the text,' 'according to the document,' or any similar explicit references. Questions should inherently integrate content naturally and stand independently without explicit references to the source material."""
+# Single-hop prompt templates
+
+QUESTION_GENERATION_SYSTEM_PROMPT_HEADER = """## Your Role
+You are an expert C++ content creator tasked with designing exceptionally challenging, technically precise questions based on C++ code, lectures, and documentation.
+
+You specialize in exposing edge cases, deep language mechanics, and subtle design trade-offs. Your questions should require expert-level reasoning — including knowledge of undefined behavior, template instantiation quirks, object lifetimes, ABI constraints, and non-obvious runtime effects.
+
+Your goal is to generate **ultra-difficult, self-contained** questions that challenge even seasoned C++ developers and compiler engineers.
+
+## Critical Rule
+Only reference functions, methods, classes, or variables if they are explicitly named in the <text_chunks>. Do not infer any symbols.
+
+## Input Structure
+<title>
+[Document title]
+</title>
+<document_summary>
+[Contextual overview]
+</document_summary>
+<text_chunk>
+[Main content block with C++ examples and explanations]
+</text_chunk>
+<additional_instructions>
+[Constraints or guidance for question creation]
+</additional_instructions>
+
+## Objective
+Generate a set of meaningful question–answer pairs based only on <text_chunk>. The reader will not see the original document, so each question must be fully self-contained and understandable on its own.
+- If referencing a method, function, class, or variable, its entire definition must appear verbatim in <text_chunk> or be fully included inline in the question.
+- Do not reference symbols that are only implied or summarized – discard such questions.
+- All code examples must be wrapped in proper fenced C++ code blocks using:
+   ```cpp
+   <code>
+   ```
+This ensures clarity, consistency, and standalone readability.
+"""
+
+QUESTION_GENERATION_SYSTEM_PROMPT_OUTPUT = (
+    DOCUMENT_ANALYSIS_REQUIREMENT
+    + "\n\nWrap your output in <output_json> tags. Output a list of QuestionRow objects using this model:\n"
+    + OPEN_ENDED_MODEL
+    + "\n\nSpecial requirements:\n"
+    + BASE_PROMPT_RULES
+    + "\n\n"
+    + EXAMPLE_OPEN_ENDED_OUTPUT
+)
+
+QUESTION_GENERATION_SYSTEM_PROMPT_OUTPUT_MULTI = (
+    DOCUMENT_ANALYSIS_REQUIREMENT
+    + "\n\nWrap your output in <output_json> tags. Output a list of QuestionRow objects using this model:\n"
+    + MULTIPLE_CHOICE_MODEL
+    + "\n\nSpecial requirements:\n"
+    + BASE_PROMPT_RULES
+    + "\n\n"
+    + EXAMPLE_MC_OUTPUT
+)
 
 QUESTION_GENERATION_SYSTEM_PROMPT = (
     QUESTION_GENERATION_SYSTEM_PROMPT_HEADER
     + QUESTION_GENERATION_SYSTEM_PROMPT_OUTPUT
-    + QUESTION_GENERATION_SYSTEM_PROMPT_FOOTER
 )
 QUESTION_GENERATION_SYSTEM_PROMPT_MULTI = (
     QUESTION_GENERATION_SYSTEM_PROMPT_HEADER
     + QUESTION_GENERATION_SYSTEM_PROMPT_OUTPUT_MULTI
-    + QUESTION_GENERATION_SYSTEM_PROMPT_FOOTER
 )
 
 QUESTION_GENERATION_USER_PROMPT = """<title>
@@ -284,127 +264,48 @@ QUESTION_GENERATION_USER_PROMPT = """<title>
 {additional_instructions}
 </additional_instructions>"""
 
+# Multi-hop prompt templates
 
 MULTI_HOP_QUESTION_GENERATION_SYSTEM_HEADER = """## Your Role
+You are an expert C++ educator and evaluator focused on generating extremely challenging, high-complexity multi-hop questions.
 
-You are an expert educational content creator specialized in generating insightful and thoughtfully designed multi-hop questions for C++ programming material. Your task is to craft sophisticated, moderately challenging questions that require integrative reasoning across multiple chunks of technical content. Aim to provoke thoughtful reflection, nuanced understanding, and synthesis of C++ concepts, syntax, and coding practices.
+Each question must synthesize information across multiple parts of the input and test deep understanding of C++ internals, such as type deduction, copy/move semantics, pointer aliasing, subtle ordering rules, and undefined or implementation-defined behavior.
+
+Your questions are designed to expose reasoning gaps in even advanced C++ programmers. All questions must be self-contained, precise, and deeply technical.
+
+## Critical Rule
+Only reference functions, methods, classes, or variables if they are explicitly named in the <text_chunks>. Do not infer any symbols.
 
 ## Input Structure
-
-Your input will consist of these components:
-
-<additional_instructions>
-[Specific guidelines, preferences, or constraints influencing question generation.]
-</additional_instructions>
-
 <title>
 [Document title]
 </title>
-
 <document_summary>
-[A concise summary providing technical context and thematic overview.]
+[Contextual summary]
 </document_summary>
-
 <text_chunks>
 <text_chunk_0>
-[First text segment – may contain C++ code, syntax explanations, or conceptual material]
+[First content block]
 </text_chunk_0>
 <text_chunk_1>
-[Second text segment]
+[Second block]
 </text_chunk_1>
-[Additional text segments as necessary]
+[Additional blocks allowed]
 </text_chunks>
+<additional_instructions>
+[Instructions on complexity or focus]
+</additional_instructions>
 
-## Primary Objective
-
-Generate a thoughtful, technically meaningful set of multi-hop question-answer pairs. Questions should require learners to integrate C++ knowledge across multiple chunks, encouraging critical thinking and deeper understanding of both code and concepts.
-
-### Context Fields:
-- `<title>`: Document context
-- `<document_summary>`: Broad contextual summary for orientation
-- `<text_chunks>`: Source material to form integrative multi-hop questions
-- `<additional_instructions>`: Specific instructions guiding the complexity and depth of questions
-
-## Analysis Phase
-
-Perform careful technical analysis within `<document_analysis>` XML tags:
-
-1. **In-depth Text Analysis**
-   - Thoughtfully read each text chunk.
-   - Identify key themes, nuanced details, and subtle connections.
-   - Highlight opportunities for insightful synthesis across multiple chunks.
-
-2. **Reasoning Path Construction**
-   - Construct potential pathways of multi-hop reasoning by connecting ideas, details, or implications found across text chunks.
-   - Explicitly document how and why multiple chunks are connected to support each question.
-
-3. **Complexity Calibration**
-   - Rate difficulty thoughtfully on a scale of 1–10, moderately challenging learners according to provided additional instructions.
-
-4. **Strategic Question Selection**
-   - Choose questions that naturally emerge from the depth and complexity of the content provided, prioritizing integrative reasoning and genuine curiosity.
-
-## Question Generation Guidelines
-
-### Question Characteristics
-
-- **Multi-Hop Integration**: Questions must require navigating and synthesizing information from **two or more** distinct text chunks.
-- **Self-Contained Format**: Each question-answer pair must be fully understandable on its own. Do not use references like "as shown above" or "in chunk 1." Summarize needed context directly in the question.
-- **Clarity & Precision**: Ensure technical correctness. If a question references C++ code or structure, include the example **inline** in the question.
-- **Thoughtfulness & Complexity**: Reflect realistic challenges learners face when combining multiple C++ concepts.
-- **Educational Relevance**: Reinforce understanding of design patterns, memory management, class hierarchy, templates, etc.
-- **Authentic Language**: Use natural, engaging phrasing similar to what developers or students might ask themselves.
-
-### Suggested Question Types
-(Use naturally, as fitting to the content complexity)
-- Analytical
-- Application-based
-- Clarification
-- Counterfactual
-- Conceptual
-- True-False
-- Factual
-- Open-ended
-- False-premise
-- Edge-case
-
-## Irrelevant Content Filtering
-
-When reviewing text chunks:
-- **Ignore** headers, footers, ads, links, disclaimers, and any non-technical elements.
-- **Do not generate questions** from any chunk containing only irrelevant or malformed content.
-- If a chunk contains mixed content, extract only the technical portions for use.
-- If a chunk lacks educational value (e.g., only fluff or broken examples), document this in `<document_analysis>` and skip it.
-
-## Prioritization Rules
-- Always favor clarity, accuracy, and educational usefulness.
-- Include supporting citations or short quotes from relevant chunks within your analysis when justifying your answer or reasoning.
+## Objective
+Generate a set of meaningful multi-hop questions based only on <text_chunk>. The reader will not see the original document, so each question must be fully self-contained and understandable on its own.
+- If referencing a method, function, class, or variable, its entire definition must appear verbatim in <text_chunk> or be fully included inline in the question.
+- Do not reference symbols that are only implied or summarized – discard such questions.
+- All code examples must be wrapped in proper fenced C++ code blocks using:
+   ```cpp
+   <code>
+   ```
+This ensures clarity, consistency, and standalone readability.
 """
-
-
-MULTI_HOP_QUESTION_GENERATION_SYSTEM_FOOTER = """## Important Notes
-- Each question-answer pair must be fully self-contained—do not rely on chunk IDs or prior context.
-- If code is needed to understand a question, include it directly in the question text.
-- Avoid vague references like "the provided code" or "the example above." State context explicitly.
-- Favor questions that encourage critical thinking, synthesis across chunks, and real-world C++ reasoning.
-- Let the content's complexity guide question difficulty—don’t artificially simplify or overcomplicate.
-- Use brief, verbatim citations from relevant chunks to support each answer.
-- Justify distractors: they should reflect plausible misunderstandings, not alternate solutions or edits.
-- Clearly explain your reasoning in the "thought_process", including how multiple chunks contributed.
-- Stick strictly to the required JSON and Pydantic model format.
-- Avoid phrases like "as per the text" or "according to the document"—questions must read naturally and independently.
-"""
-
-MULTI_HOP_QUESTION_GENERATION_SYSTEM_PROMPT = (
-    MULTI_HOP_QUESTION_GENERATION_SYSTEM_HEADER
-    + QUESTION_GENERATION_SYSTEM_PROMPT_OUTPUT
-    + MULTI_HOP_QUESTION_GENERATION_SYSTEM_FOOTER
-)
-MULTI_HOP_QUESTION_GENERATION_SYSTEM_PROMPT_MULTI = (
-    MULTI_HOP_QUESTION_GENERATION_SYSTEM_HEADER
-    + QUESTION_GENERATION_SYSTEM_PROMPT_OUTPUT_MULTI
-    + MULTI_HOP_QUESTION_GENERATION_SYSTEM_FOOTER
-)
 
 MULTI_HOP_QUESTION_GENERATION_USER_PROMPT = """<title>
 {title}
@@ -422,178 +323,16 @@ MULTI_HOP_QUESTION_GENERATION_USER_PROMPT = """<title>
 {additional_instructions}
 </additional_instructions>"""
 
-
-ZEROSHOT_QA_USER_PROMPT = """Answer the following question:
-
-<question>
-{question}
-</question>
-
-Enclose your full answer in <answer> XML tags. For example:
-
-<answer>
-[your answer here]
-</answer>"""
-
-GOLD_QA_USER_PROMPT = """Answer the following question:
-
-<question>
-{question}
-</question>
-
-Here is a summary of the document the question is asked from which may be helpful:
-
-<document_summary>
-{summary}
-</document_summary>
-
-And here is a relevant chunk of the document which may prove useful
-
-<document>
-{document}
-</document>
-
-Enclose your full answer in <answer> XML tags. For example:
-
-<answer>
-[your answer here]
-</answer>"""
-
-JUDGE_ANSWER_SYSTEM_PROMPT = """You will be provided with the summary of a document, a piece of text, a question generated from that text, and the correct or "gold" answer to the question. Additionally, you will receive two answers: Answer A and Answer B. Your task is to determine which of these answers is closer to the gold answer by assessing the overlap of key points between the ground truth and the two given answers.
-
-# Steps
-
-1. **Document Understanding**:
-   - Analyze the provided document summary to grasp the context and main themes.
-
-2. **Chunk Understanding**:
-   - Examine the provided text (chunk) to understand its content.
-
-3. **Question Understanding**:
-   - Interpret the given question to fully comprehend what is being asked.
-
-4. **Ground Truth Answer Understanding**:
-   - Understand the provided ground truth answer, identifying its key points.
-
-5. **Answer A Understanding**:
-   - Analyze Answer A, identifying key points and assessing accuracy and factuality.
-
-6. **Answer B Understanding**:
-   - Examine Answer B, identifying key points and assessing accuracy and factuality.
-
-7. **Similarity Comparison**:
-   - Compare Answer A and the ground truth answer, noting similarities in key points.
-   - Compare Answer B and the ground truth answer, noting similarities in key points.
-
-8. **Final Similarity Analysis**:
-   - Evaluate both answers based on the similarities identified and determine which is closer to the ground truth in terms of key points and factuality.
-
-# Output Format
-
-- Provide your final evaluation of which answer is closer to the ground truth within `<final_answer>` XML tags.
-- Include a detailed analysis for each part within the designated XML tags: `<document_understanding>`, `<chunk_understanding>`, `<question_understanding>`, `<ground_truth_answer_understanding>`, `<answer_a_understanding>`, `<answer_b_understanding>`, `<similarity_comparison_answer_a>`, `<similarity_comparison_answer_b>`, and `<final_similarity_analysis>`.
-
-# Examples
-
-**Input**:
-```xml
-<document_summary>
-[Summary]
-</document_summary>
-
-<piece_of_text>
-[Text]
-</piece_of_text>
-
-<question>
-[Question]
-</question>
-
-<gold_answer>
-[Gold Answer]
-</gold_answer>
-
-<answer_a>
-[Answer A]
-</answer_a>
-
-<answer_b>
-[Answer B]
-</answer_b>
-```
-**Output**:
-```xml
-
-<document_understanding>
-Understanding of the summary including key themes
-</document_understanding>
-
-<chunk_understanding>
-Analysis of the piece of text
-</chunk_understanding>
-
-<question_understanding>
-Comprehension of the question being asked
-</question_understanding>
-
-<ground_truth_answer_understanding>
-Key points from the gold answer
-</ground_truth_answer_understanding>
-
-<answer_a_understanding>
-Key points and accuracy of Answer A
-</answer_a_understanding>
-
-<answer_b_understanding>
-Key points and accuracy of Answer B
-</answer_b_understanding>
-
-<similarity_comparison_answer_a>
-Comparison notes between Answer A and the gold answer
-</similarity_comparison_answer_a>
-
-<similarity_comparison_answer_b>
-Comparison notes between Answer B and the gold answer
-</similarity_comparison_answer_b>
-
-<final_similarity_analysis>
-Overall analysis determining the closer answer
-</final_similarity_analysis>
-
-<final_answer>
-Answer X (where X is the option you pick)
-</final_answer>
-```
-
-# Notes
-
-- Always focus on key points and factual correctness as per the ground truth.
-- Avoid any biases and rely solely on the evidence presented.
-- Enclose all evaluations and analyses in the specified XML tags for clarity and structure."""
-
-JUDGE_ANSWER_USER_PROMPT = """<document_summary>
-{summary}
-</document_summary>
-
-<piece_of_text>
-{chunk}
-</piece_of_text>
-
-<question>
-{question}
-</question>
-
-<gold_answer>
-{oracle_answer}
-</gold_answer>
-
-<answer_a>
-{answer_a}
-</answer_a>
-
-<answer_b>
-{answer_b}
-</answer_b>"""
+MULTI_HOP_QUESTION_GENERATION_SYSTEM_PROMPT = (
+    MULTI_HOP_QUESTION_GENERATION_SYSTEM_HEADER
+    + QUESTION_GENERATION_SYSTEM_PROMPT_OUTPUT
+    + BASE_PROMPT_RULES
+)
+MULTI_HOP_QUESTION_GENERATION_SYSTEM_PROMPT_MULTI = (
+    MULTI_HOP_QUESTION_GENERATION_SYSTEM_HEADER
+    + QUESTION_GENERATION_SYSTEM_PROMPT_OUTPUT_MULTI
+    + BASE_PROMPT_RULES
+)
 
 COMBINE_SUMMARIES_USER_PROMPT = """\
 You will receive a list of chunk-level summaries from the *same* \
