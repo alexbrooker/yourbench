@@ -169,6 +169,7 @@ OPEN_ENDED_TYPES = {
     "open-ended",
     "false-premise",
     "edge-case",
+    "troubleshooting",
 }
 
 MULTI_CHOICE_TYPES = {
@@ -181,6 +182,7 @@ MULTI_CHOICE_TYPES = {
     "factual",
     "false-premise",
     "edge-case",
+    "troubleshooting",
 }
 
 
