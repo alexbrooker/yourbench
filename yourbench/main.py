@@ -14,6 +14,7 @@ from loguru import logger
 from rich.table import Table
 from rich.prompt import Prompt, Confirm, IntPrompt, FloatPrompt
 from rich.console import Console
+from randomname import get_name as get_random_name
 
 from yourbench.analysis import run_analysis
 from yourbench.pipeline.handler import run_pipeline
@@ -44,7 +45,7 @@ class ConfigBuilder:
     """Builder for creating YourBench configuration files."""
 
     # HF Configuration
-    hf_dataset_name: str = ""
+    hf_dataset_name: str = get_random_name()
     hf_organization: str = "$HF_ORGANIZATION"
     hf_token: str = "$HF_TOKEN"
     private: bool = False
