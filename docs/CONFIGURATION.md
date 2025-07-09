@@ -2,41 +2,36 @@
 
 ## Configuration File Overview
 
-The YourBench configuration file is written in YAML and consists of several key sections, each controlling a distinct part of the tool's functionality:
+YourBench uses a modern, type-safe configuration system powered by dataclasses. The configuration file is written in YAML and consists of several key sections:
 
-- **`settings`**: Global settings that apply across the entire application.
-- **`hf_configuration`**: Settings for integration with the Hugging Face Hub.
-- **`local_dataset_dir`**: Optional path for local dataset storage instead of Hugging Face Hub.
-- **`model_list`**: Definitions of the models available for use in YourBench.
-- **`model_roles`**: Assignments of models to specific pipeline stages.
-- **`pipeline`**: Configuration for the stages of the YourBench pipeline.
+- **`hf_configuration`**: Settings for integration with the Hugging Face Hub
+- **`model_list`**: Definitions of the models available for use in YourBench
+- **`model_roles`**: Assignments of models to specific pipeline stages
+- **`pipeline`**: Configuration for the stages of the YourBench pipeline
+
+The configuration system automatically handles environment variable expansion and provides sensible defaults for all settings.
 
 Below, each section is detailed with descriptions, YAML syntax, and examples to help you configure YourBench effectively.
 
 ---
 
-## Global Settings
+## Quick Start
 
-The `settings` section defines global options that influence the overall behavior of YourBench.
+The easiest way to create a configuration is using the interactive builder:
 
-### YAML Syntax
-```yaml
-settings:
-  debug: false  # Enable debug mode with metrics collection
+```bash
+# Create a simple configuration with minimal prompts
+yourbench create --simple config.yaml
+
+# Create a full configuration with all options
+yourbench create config.yaml
 ```
 
-### Options
-- **`debug`**  
-  - **Type**: Boolean  
-  - **Default**: `false`  
-  - **Description**: When set to `true`, enables debug mode, which collects additional metrics during execution for troubleshooting or analysis. In debug mode, perplexity and readability metrics are calculated for chunks, and similarity plots may be generated.
-
-### Example
-To enable debug mode:
-```yaml
-settings:
-  debug: true
-```
+The configuration builder automatically handles:
+- Environment variable setup
+- Model provider configuration
+- Pipeline stage selection
+- Sensible defaults for all settings
 
 ---
 
@@ -55,92 +50,80 @@ hf_configuration:
 ```
 
 ### Options
-- **`token`**  
+- **`hf_token`** (formerly `token`)
   - **Type**: String  
   - **Required**: Yes  
-  - **Description**: Your Hugging Face API token, obtainable from [Hugging Face's documentation](https://huggingface.co/docs/huggingface_hub/en/quick-start#authentication). Use an environment variable (e.g., `$HF_TOKEN`) for security.
+  - **Description**: Your Hugging Face API token. Use environment variable format `$HF_TOKEN` for security.
 
 - **`hf_organization`**  
   - **Type**: String  
   - **Optional**: Yes  
-  - **Default**: Your Hugging Face username  
-  - **Description**: Specifies the organization under which datasets are created. If omitted, defaults to your username.
+  - **Default**: Automatically detected from `$HF_TOKEN` or your username
+  - **Description**: Organization under which datasets are created. Use `$HF_ORGANIZATION` for environment variable.
 
 - **`private`**  
   - **Type**: Boolean  
-  - **Default**: `true`  
-  - **Description**: Controls dataset visibility on the Hugging Face Hub. Set to `false` for public datasets, `true` for private ones.
+  - **Default**: `false`  
+  - **Description**: Controls dataset visibility. Set to `true` for private datasets.
 
 - **`hf_dataset_name`**  
   - **Type**: String  
   - **Required**: Yes  
-  - **Description**: The name of the dataset on the Hugging Face Hub where traces and generated questions are stored.
+  - **Description**: Dataset name on Hugging Face Hub for storing generated questions and traces.
 
 - **`concat_if_exist`**  
   - **Type**: Boolean  
   - **Default**: `false`  
-  - **Description**: If set to `true`, new data will be concatenated to an existing dataset with the same name. If `false`, the existing dataset will be overwritten.
+  - **Description**: If `true`, appends to existing dataset instead of overwriting.
+
+- **`local_dataset_dir`**  
+  - **Type**: String (Path)  
+  - **Optional**: Yes  
+  - **Default**: `"data/saved_dataset"`  
+  - **Description**: Local directory for dataset storage alongside or instead of Hub storage.
+
+- **`local_saving`**  
+  - **Type**: Boolean  
+  - **Default**: `true`  
+  - **Description**: Whether to save datasets locally in addition to Hub upload.
 
 ### Example
 For a public dataset under a specific organization:
 ```yaml
 hf_configuration:
-  token: $HF_TOKEN
-  hf_organization: my_org
+  hf_token: $HF_TOKEN
+  hf_organization: $HF_ORGANIZATION
   private: false
   hf_dataset_name: yourbench_data
   concat_if_exist: false
-```
-
----
-
-## Local Dataset Directory
-
-As an alternative to storing datasets on the Hugging Face Hub, you can specify a local directory for dataset storage.
-
-### YAML Syntax
-```yaml
-local_dataset_dir: /path/to/local/dataset
-```
-
-### Options
-- **`local_dataset_dir`**  
-  - **Type**: String  
-  - **Optional**: Yes  
-  - **Description**: Path to a local directory where datasets will be stored. If specified, this overrides the Hugging Face Hub storage.
-
-### Example
-```yaml
-local_dataset_dir: /home/user/yourbench_datasets
+  local_dataset_dir: data/saved_dataset
+  local_saving: true
 ```
 
 ---
 
 ## Model Settings
 
-The `model_list` section defines the models YourBench can utilize, supporting various providers and inference backends.
+The `model_list` section defines the models YourBench can utilize, supporting various providers and inference backends. The configuration system automatically handles provider detection and sensible defaults.
 
 ### YAML Syntax
 ```yaml
 model_list:
-  # Hugging Face model
+  # Hugging Face model (auto-detected provider)
   - model_name: Qwen/Qwen2.5-VL-72B-Instruct
-    provider: hf-inference  # Optional: e.g., hf-inference, novita, together
+    provider: fireworks-ai  # Optional: fireworks-ai, together-ai, deepinfra, etc.
     api_key: $HF_TOKEN
     max_concurrent_requests: 32
-    base_url: null  # Optional: custom API endpoint
 
   # OpenAI model
   - model_name: gpt-4o
-    provider: null  # Set to null for OpenAI API
-    base_url: "https://api.openai.com/v1"  # Default OpenAI API URL
+    base_url: "https://api.openai.com/v1"
     api_key: $OPENAI_API_KEY
     max_concurrent_requests: 10
 
-  # OpenAI-compatible model (e.g., local server, Azure, Anthropic)
+  # OpenAI-compatible model (e.g., local server, vLLM, Anthropic)
   - model_name: claude-3-opus-20240229
-    provider: null
-    base_url: "https://api.anthropic.com/v1"  # Replace with your API endpoint
+    base_url: "https://api.anthropic.com/v1"
     api_key: $ANTHROPIC_API_KEY
     max_concurrent_requests: 5
 ```
@@ -156,24 +139,31 @@ For each model in the list, you can specify:
 - **`provider`**  
   - **Type**: String  
   - **Optional**: Yes  
-  - **Default**: `null`  
-  - **Description**: For Hugging Face models, specifies the inference provider (e.g., `hf-inference`, `novita`, `together`). Set to `null` for OpenAI API or OpenAI-compatible endpoints.
+  - **Default**: `"auto"` (if no `base_url` specified)
+  - **Description**: For Hugging Face models, specifies the inference provider (e.g., `fireworks-ai`, `together-ai`, `deepinfra`). Omit for OpenAI API or OpenAI-compatible endpoints.
 
 - **`api_key`**  
   - **Type**: String  
   - **Required**: Yes (for most models)  
-  - **Description**: The API key for accessing the model, typically stored as an environment variable.
+  - **Default**: `"$HF_TOKEN"`
+  - **Description**: The API key for accessing the model. Always use environment variable format for security.
 
 - **`base_url`**  
   - **Type**: String  
   - **Optional**: Yes  
-  - **Description**: The base URL for the API endpoint. Use this to specify custom endpoints for OpenAI-compatible APIs or local inference servers.
+  - **Description**: The base URL for the API endpoint. Required for OpenAI-compatible APIs or local inference servers.
 
 - **`max_concurrent_requests`**  
   - **Type**: Integer  
   - **Optional**: Yes  
-  - **Default**: `16`  
+  - **Default**: `32`  
   - **Description**: Limits the number of concurrent requests to the model.
+
+- **`encoding_name`**  
+  - **Type**: String  
+  - **Optional**: Yes  
+  - **Default**: `"cl100k_base"`  
+  - **Description**: Tokenizer encoding name for token counting.
 
 ### Example
 Configuring a mix of remote and local models:
