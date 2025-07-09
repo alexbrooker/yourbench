@@ -79,6 +79,9 @@ class ModelConfig:
     def __post_init__(self):
         _expand_dataclass(self)
 
+        # if base_url is not set, and provider is not set, default to "auto"
+        if not self.base_url and not self.provider:
+            self.provider = "auto"
 
 @dataclass
 class IngestionConfig:
@@ -186,6 +189,34 @@ class YourbenchConfig:
     model_roles: dict[str, list[str]] = field(default_factory=dict)
     debug: bool = False
 
+    def __post_init__(self):
+        """Assign default model roles for each pipeline stage if not specified."""
+        if not self.model_list:
+            return
+            
+        # Get the first model name as default
+        default_model = self.model_list[0].model_name
+        if not default_model:
+            return
+            
+        # All pipeline stages that can use models
+        pipeline_stages = [
+            "ingestion",
+            "summarization", 
+            "chunking",
+            "question_generation",
+            "single_shot_question_generation",
+            "multi_hop_question_generation", 
+            "question_rewriting",
+            "lighteval",
+            "citation_score_filtering"
+        ]
+        
+        # Assign default model to stages that don't have model roles defined
+        for stage in pipeline_stages:
+            if stage not in self.model_roles:
+                self.model_roles[stage] = [default_model]
+
     @classmethod
     def from_yaml(cls, path: str | Path) -> "YourbenchConfig":
         """
@@ -196,7 +227,9 @@ class YourbenchConfig:
             data = yaml.safe_load(fh) or {}
 
         hf_kwargs = data.get("hf_configuration", {})
-        model_list = data.get("model_list", [])
+        
+        # Handle both 'models' and 'model_list' keys for backward compatibility
+        model_list = data.get("model_list", data.get("models", []))
         model_roles = data.get("model_roles", {})
 
         # Handle pipeline configuration with proper nested dataclass instantiation
