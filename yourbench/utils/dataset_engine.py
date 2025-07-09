@@ -434,10 +434,10 @@ def create_cross_document_dataset(dataset: Dataset, stage_cfg: dict[str, Any]) -
         A new Dataset with cross-document combinations, preserving a similar schema but with an aggregated summary.
     """
     # Extract and validate configuration
-    max_combinations = int(stage_cfg.get("max_combinations", 100))
-    chunks_per_document = int(stage_cfg.get("chunks_per_document", 1))
-    num_docs_range = stage_cfg.get("num_docs_per_combination", [2, 5])
-    random_seed = int(stage_cfg.get("random_seed", 42))
+    max_combinations = int(getattr(stage_cfg, "max_combinations", 100) if hasattr(stage_cfg, "max_combinations") else stage_cfg.get("max_combinations", 100) if isinstance(stage_cfg, dict) else 100)
+    chunks_per_document = int(getattr(stage_cfg, "chunks_per_document", 1) if hasattr(stage_cfg, "chunks_per_document") else stage_cfg.get("chunks_per_document", 1) if isinstance(stage_cfg, dict) else 1)
+    num_docs_range = getattr(stage_cfg, "num_docs_per_combination", [2, 5]) if hasattr(stage_cfg, "num_docs_per_combination") else stage_cfg.get("num_docs_per_combination", [2, 5]) if isinstance(stage_cfg, dict) else [2, 5]
+    random_seed = int(getattr(stage_cfg, "random_seed", 42) if hasattr(stage_cfg, "random_seed") else stage_cfg.get("random_seed", 42) if isinstance(stage_cfg, dict) else 42)
 
     # Validate num_docs_range
     if not isinstance(num_docs_range, list) or len(num_docs_range) != 2:
