@@ -68,5 +68,7 @@ line-ending = "auto"
 
 [dependency-groups]
 dev = [
+    "mypy>=1.16.1",
     "pytest>=8.4.1",
+    "types-pyyaml>=6.0.12.20250516",
 ]
