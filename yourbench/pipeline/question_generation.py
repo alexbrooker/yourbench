@@ -24,12 +24,7 @@ from __future__ import annotations
 from loguru import logger
 
 from datasets import Dataset
-from yourbench.utils.prompts import (
-    QUESTION_GENERATION_SYSTEM_PROMPT,
-    QUESTION_GENERATION_SYSTEM_PROMPT_MULTI,
-    MULTI_HOP_QUESTION_GENERATION_SYSTEM_PROMPT,
-    MULTI_HOP_QUESTION_GENERATION_SYSTEM_PROMPT_MULTI,
-)
+# Prompts are now loaded from configuration files
 from yourbench.utils.chunking_utils import get_sampling_cfg
 from yourbench.utils.dataset_engine import custom_load_dataset, custom_save_dataset, create_cross_document_dataset
 from yourbench.utils.parsing_engine import (
@@ -68,10 +63,10 @@ def run_single_shot(config: YourbenchConfig) -> None:
     logger.info(f"Single-shot question_mode: {question_mode}")
 
     if question_mode == "multi-choice":
-        system_prompt = QUESTION_GENERATION_SYSTEM_PROMPT_MULTI
+        system_prompt = stage_cfg.single_shot_system_prompt_multi
         logger.debug("Using MULTI-CHOICE prompt for single-shot generation.")
     else:
-        system_prompt = QUESTION_GENERATION_SYSTEM_PROMPT
+        system_prompt = stage_cfg.single_shot_system_prompt
         logger.debug("Using OPEN-ENDED prompt for single-shot generation.")
 
     system_msg = {"role": "system", "content": system_prompt}
@@ -119,9 +114,9 @@ def run_multi_hop(config: YourbenchConfig) -> None:
         question_mode = "open-ended"
 
     system_prompt = (
-        MULTI_HOP_QUESTION_GENERATION_SYSTEM_PROMPT_MULTI
+        stage_cfg.multi_hop_system_prompt_multi
         if question_mode == "multi-choice"
-        else MULTI_HOP_QUESTION_GENERATION_SYSTEM_PROMPT
+        else stage_cfg.multi_hop_system_prompt
     )
     system_msg = {"role": "system", "content": system_prompt}
 

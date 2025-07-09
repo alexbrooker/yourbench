@@ -176,6 +176,24 @@ class SingleShotQuestionGenerationConfig:
     """Configuration for the single shot question generation stage"""
 
     run: bool = False
+    question_mode: str = "open-ended"  # "open-ended" or "multi-choice"
+    single_shot_system_prompt: str | Path = Path("yourbench/prompts/question_generation/single_shot_system_prompt.md")
+    single_shot_system_prompt_multi: str | Path = Path("yourbench/prompts/question_generation/single_shot_system_prompt_multi.md")
+    single_shot_user_prompt: str | Path = Path("yourbench/prompts/question_generation/single_shot_user_prompt.md")
+
+    def __post_init__(self):
+        # Load prompt files if they exist
+        single_shot_system_prompt_path = Path(self.single_shot_system_prompt)
+        if single_shot_system_prompt_path.is_file():
+            self.single_shot_system_prompt = single_shot_system_prompt_path.read_text(encoding="utf-8").strip()
+
+        single_shot_system_prompt_multi_path = Path(self.single_shot_system_prompt_multi)
+        if single_shot_system_prompt_multi_path.is_file():
+            self.single_shot_system_prompt_multi = single_shot_system_prompt_multi_path.read_text(encoding="utf-8").strip()
+
+        single_shot_user_prompt_path = Path(self.single_shot_user_prompt)
+        if single_shot_user_prompt_path.is_file():
+            self.single_shot_user_prompt = single_shot_user_prompt_path.read_text(encoding="utf-8").strip()
 
 
 @dataclass
@@ -183,6 +201,24 @@ class MultiHopQuestionGenerationConfig:
     """Configuration for the multi hop question generation stage"""
 
     run: bool = False
+    question_mode: str = "open-ended"  # "open-ended" or "multi-choice"
+    multi_hop_system_prompt: str | Path = Path("yourbench/prompts/question_generation/multi_hop_system_prompt.md")
+    multi_hop_system_prompt_multi: str | Path = Path("yourbench/prompts/question_generation/multi_hop_system_prompt_multi.md")
+    multi_hop_user_prompt: str | Path = Path("yourbench/prompts/question_generation/multi_hop_user_prompt.md")
+
+    def __post_init__(self):
+        # Load prompt files if they exist
+        multi_hop_system_prompt_path = Path(self.multi_hop_system_prompt)
+        if multi_hop_system_prompt_path.is_file():
+            self.multi_hop_system_prompt = multi_hop_system_prompt_path.read_text(encoding="utf-8").strip()
+
+        multi_hop_system_prompt_multi_path = Path(self.multi_hop_system_prompt_multi)
+        if multi_hop_system_prompt_multi_path.is_file():
+            self.multi_hop_system_prompt_multi = multi_hop_system_prompt_multi_path.read_text(encoding="utf-8").strip()
+
+        multi_hop_user_prompt_path = Path(self.multi_hop_user_prompt)
+        if multi_hop_user_prompt_path.is_file():
+            self.multi_hop_user_prompt = multi_hop_user_prompt_path.read_text(encoding="utf-8").strip()
 
 
 @dataclass

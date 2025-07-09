@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 from loguru import logger
 
-from yourbench.utils.prompts import QUESTION_GENERATION_USER_PROMPT, MULTI_HOP_QUESTION_GENERATION_USER_PROMPT
+# User prompts are now passed via configuration
 from yourbench.utils.chunking_utils import sample_multihop_groups, sample_single_hop_chunks
 from yourbench.utils.inference.inference_core import InferenceCall
 
@@ -26,7 +26,7 @@ def build_single_shot_inference_calls(dataset, system_msg, stage_cfg, sampling_c
             chunk_text = chunk.get("chunk_text", "")
             user_msg = {
                 "role": "user",
-                "content": QUESTION_GENERATION_USER_PROMPT.format(
+                "content": stage_cfg.single_shot_user_prompt.format(
                     title=row.get("document_filename", f"doc_{idx}"),
                     document_summary=row.get("document_summary", ""),
                     text_chunk=chunk_text,
@@ -69,7 +69,7 @@ def build_multi_hop_inference_calls(dataset, system_msg, stage_cfg):
             full_text = "".join([f"<text_chunk_{i}>{t}</text_chunk_{i}>\n" for i, t in enumerate(texts)])
             user_msg = {
                 "role": "user",
-                "content": MULTI_HOP_QUESTION_GENERATION_USER_PROMPT.format(
+                "content": stage_cfg.multi_hop_user_prompt.format(
                     title=row.get("document_filename", ""),
                     document_summary=row.get("document_summary", ""),
                     chunks=full_text,
