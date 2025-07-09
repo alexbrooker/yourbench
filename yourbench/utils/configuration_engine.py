@@ -94,11 +94,33 @@ class IngestionConfig:
     upload_to_hub: bool = True
     llm_ingestion: bool = False
     pdf_dpi: int = 300
+    pdf_llm_prompt: str | Path = Path("yourbench/prompts/ingestion/pdf_llm_prompt.md")
+    supported_file_extensions: list[str] = field(
+        default_factory=lambda: [
+            ".md",
+            ".txt",
+            ".html",
+            ".htm",
+            ".pdf",
+            ".docx",
+            ".doc",
+            ".pptx",
+            ".ppt",
+            ".xlsx",
+            ".xls",
+            ".rtf",
+            ".odt",
+        ]
+    )
 
     def __post_init__(self):
         # convert string directories to Path objects
         self.source_documents_dir = Path(self.source_documents_dir)
         self.output_dir = Path(self.output_dir)
+
+        prompt_path = Path(self.pdf_llm_prompt)
+        if prompt_path.is_file():
+            self.pdf_llm_prompt = prompt_path.read_text(encoding="utf-8").strip()
 
         if not self.source_documents_dir or not self.output_dir:
             logger.error("Missing source or output director. Creating default directories.")
