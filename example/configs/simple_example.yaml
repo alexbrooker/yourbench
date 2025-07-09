@@ -10,7 +10,7 @@ model_list:
 pipeline:
   ingestion:
   summarization:
-  # chunking:
+  chunking:
   # single_shot_question_generation:
   # multi_hop_question_generation:
   # lighteval:

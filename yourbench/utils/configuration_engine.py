@@ -136,7 +136,9 @@ class SummarizationConfig:
     token_overlap: int = 512
     encoding_name: str = "cl100k_base"
     summarization_user_prompt: str | Path = Path("yourbench/prompts/summarization/summarization_user_prompt.md")
-    combine_summaries_user_prompt: str | Path = Path("yourbench/prompts/summarization/combine_summaries_user_prompt.md")
+    combine_summaries_user_prompt: str | Path = Path(
+        "yourbench/prompts/summarization/combine_summaries_user_prompt.md"
+    )
 
     def __post_init__(self):
         # Load prompt files if they exist
@@ -154,6 +156,12 @@ class ChunkingConfig:
     """Configuration for the chunking stage"""
 
     run: bool = False
+    l_max_tokens: int = 8192
+    token_overlap: int = 512
+    encoding_name: str = "cl100k_base"
+    h_min: int = 2
+    h_max: int = 5
+    num_multihops_factor: int = 1
 
 
 @dataclass
