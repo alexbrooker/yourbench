@@ -12,6 +12,7 @@ from yourbench.utils.chunking_utils import split_into_token_chunks
 from yourbench.utils.dataset_engine import custom_load_dataset, custom_save_dataset
 from yourbench.utils.parsing_engine import extract_content_from_xml_tags
 from yourbench.utils.inference.inference_core import InferenceCall, run_inference
+from yourbench.utils.configuration_engine import YourbenchConfig
 
 
 def _build_chunk_calls(
@@ -139,18 +140,14 @@ def _merge_final_summaries(
     return updated_final_summaries
 
 
-def run(config: dict[str, Any]) -> None:
+def run(config: YourbenchConfig) -> None:
     """Executes the hierarchical summarization pipeline."""
-    stage_cfg = config.get("pipeline", {}).get("summarization", {})
-    if not stage_cfg.get("run", False):
-        logger.info("Summarization stage disabled – skipping.")
-        return
+    stage_cfg = config.pipeline_config.summarization
+    max_tokens: int = stage_cfg.max_tokens
+    overlap: int = stage_cfg.token_overlap
+    encoding_name: str = stage_cfg.encoding_name
 
-    max_tokens: int = stage_cfg.get("max_tokens", 16384)
-    overlap: int = stage_cfg.get("token_overlap", 128)
-    encoding_name: str = stage_cfg.get("encoding_name", "cl100k_base")
-
-    logger.info("=== Summarization v2 – map-reduce ===")
+    logger.info("Starting Stage: Summarization")
 
     dataset = custom_load_dataset(config=config, subset="ingested")
     if not dataset or len(dataset) == 0:
