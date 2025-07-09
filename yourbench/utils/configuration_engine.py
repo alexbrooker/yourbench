@@ -52,6 +52,9 @@ class HuggingFaceConfig:
     hf_organization: str = "$HF_ORGANIZATION"
     hf_token: str = "$HF_TOKEN"
     private: bool = False
+    concat_if_exist: bool = False
+    local_dataset_dir: Path | None = Path("data/saved_dataset")
+    local_saving: bool = True
     upload_card: bool = True
 
     def __post_init__(self):
@@ -78,11 +81,87 @@ class ModelConfig:
 
 
 @dataclass
+class IngestionConfig:
+    """Configuration for the ingestion stage"""
+    run: bool = False
+    source_documents_dir: Path | None = Path("data/raw")
+    output_dir: Path | None = Path("data/processed")
+    upload_to_hub: bool = True
+    llm_ingestion: bool = False
+    pdf_dpi: int = 300
+
+    def __post_init__(self):
+        # convert string directories to Path objects
+        self.source_documents_dir = Path(self.source_documents_dir)
+        self.output_dir = Path(self.output_dir)
+        
+        if not self.source_documents_dir or not self.output_dir:
+            logger.error("Missing source or output director. Creating default directories.")
+            raise ValueError("Missing source or output directory")
+
+@dataclass
+class SummarizationConfig:
+    """Configuration for the summarization stage"""
+    run: bool = False
+
+@dataclass
+class ChunkingConfig:
+    """Configuration for the chunking stage"""
+    run: bool = False
+
+@dataclass
+class QuestionGenerationConfig:
+    """Configuration for the question generation stage"""
+    run: bool = False
+
+@dataclass
+class SingleShotQuestionGenerationConfig:
+    """Configuration for the single shot question generation stage"""
+    run: bool = False
+
+@dataclass
+class MultiHopQuestionGenerationConfig:
+    """Configuration for the multi hop question generation stage"""
+    run: bool = False
+
+@dataclass
+class QuestionRewritingConfig:
+    """Configuration for the question rewriting stage"""
+    run: bool = False
+
+@dataclass
+class LightevalConfig:
+    """Configuration for the lighteval stage"""
+    run: bool = False
+
+@dataclass
+class CitationScoreFilteringConfig:
+    """Configuration for the citation score filtering stage"""
+    run: bool = False
+
+@dataclass
+class PipelineConfig:
+    """Configuration for the pipeline"""
+
+    ingestion: IngestionConfig = field(default_factory=IngestionConfig)
+    summarization: SummarizationConfig = field(default_factory=SummarizationConfig)
+    chunking: ChunkingConfig = field(default_factory=ChunkingConfig)
+    question_generation: QuestionGenerationConfig = field(default_factory=QuestionGenerationConfig)
+    single_shot_question_generation: SingleShotQuestionGenerationConfig = field(default_factory=SingleShotQuestionGenerationConfig)
+    multi_hop_question_generation: MultiHopQuestionGenerationConfig = field(default_factory=MultiHopQuestionGenerationConfig)
+    question_rewriting: QuestionRewritingConfig = field(default_factory=QuestionRewritingConfig)
+    lighteval: LightevalConfig = field(default_factory=LightevalConfig)
+    citation_score_filtering: CitationScoreFilteringConfig = field(default_factory=CitationScoreFilteringConfig)
+
+@dataclass
 class YourbenchConfig:
     """The main configuration class for the YourBench pipeline."""
 
-    hf_configuration: HuggingFaceConfig
+    hf_configuration: HuggingFaceConfig = field(default_factory=HuggingFaceConfig)
+    pipeline_config: PipelineConfig = field(default_factory=PipelineConfig)
     model_list: list[ModelConfig] = field(default_factory=list)
+    model_roles: dict[str, list[str]] = field(default_factory=dict)
+    debug: bool = False
 
     @classmethod
     def from_yaml(cls, path: str | Path) -> "YourbenchConfig":
@@ -95,7 +174,39 @@ class YourbenchConfig:
 
         hf_kwargs = data.get("hf_configuration", {})
         model_list = data.get("model_list", [])
-        return cls(hf_configuration=HuggingFaceConfig(**hf_kwargs), model_list=[ModelConfig(**m) for m in model_list])
+        model_roles = data.get("model_roles", {})
+        
+        # Handle pipeline configuration with proper nested dataclass instantiation
+        pipeline_data = data.get("pipeline", {})
+        pipeline_kwargs = {}
+        
+        # Map stage names to their corresponding config classes
+        stage_config_classes = {
+            "ingestion": IngestionConfig,
+            "summarization": SummarizationConfig,
+            "chunking": ChunkingConfig,
+            "question_generation": QuestionGenerationConfig,
+            "single_shot_question_generation": SingleShotQuestionGenerationConfig,
+            "multi_hop_question_generation": MultiHopQuestionGenerationConfig,
+            "question_rewriting": QuestionRewritingConfig,
+            "lighteval": LightevalConfig,
+            "citation_score_filtering": CitationScoreFilteringConfig,
+        }
+        
+        # Convert each stage configuration dict to its dataclass instance
+        for stage_name, config_data in pipeline_data.items():
+            if stage_name in stage_config_classes:
+                config_class = stage_config_classes[stage_name]
+                pipeline_kwargs[stage_name] = config_class(**config_data)
+            else:
+                logger.warning(f"Unknown pipeline stage: {stage_name}")
+        
+        return cls(
+            hf_configuration=HuggingFaceConfig(**hf_kwargs),
+            model_list=[ModelConfig(**m) for m in model_list],
+            model_roles=model_roles,
+            pipeline_config=PipelineConfig(**pipeline_kwargs),
+        )
 
 
 if __name__ == "__main__":
