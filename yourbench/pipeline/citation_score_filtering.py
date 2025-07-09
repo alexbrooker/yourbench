@@ -13,7 +13,7 @@ from yourbench.utils.configuration_engine import YourbenchConfig
 @dataclass(slots=True)
 class StageConfig:
     run: bool = False
-    subset: str = "lighteval"
+    subset: str = "prepared_lighteval"
     alpha: float = 0.7
     beta: float = 0.3
 
