@@ -30,11 +30,11 @@ def _chunk_text(text: str, doc_id: str, max_tokens: int) -> list[dict]:
 
 def _sample_multihop_combinations(n_chunks: int, h_min: int, h_max: int, factor: int, doc_id: str) -> list[list[int]]:
     """Generate random multi-hop chunk combinations."""
-    
+
     # If we have only 1 chunk, create a single-chunk combination for cross-document use
     if n_chunks == 1:
         return [[0]]
-    
+
     # Original logic for multiple chunks per document
     if n_chunks < h_min or h_min > h_max or h_min <= 0:
         return []

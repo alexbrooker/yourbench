@@ -100,7 +100,9 @@ def run_multi_hop(config: YourbenchConfig) -> None:
     logger.info(f"Loaded {len(chunked_ds)} documents for multi-hop")
 
     # Process regular multi-hop
-    _process_questions(chunked_ds, "multi_hop_questions", system_msg, stage_cfg, config, "multi_hop_question_generation")
+    _process_questions(
+        chunked_ds, "multi_hop_questions", system_msg, stage_cfg, config, "multi_hop_question_generation"
+    )
 
 
 def run_cross_document(config: YourbenchConfig) -> None:
@@ -128,7 +130,9 @@ def run_cross_document(config: YourbenchConfig) -> None:
     logger.info("Starting cross-document generation")
     if cross_ds := create_cross_document_dataset(chunked_ds, cross_cfg):
         logger.info(f"Generated {len(cross_ds)} cross-document combinations")
-        _process_questions(cross_ds, "cross_document_questions", system_msg, stage_cfg, config, "cross_document_question_generation")
+        _process_questions(
+            cross_ds, "cross_document_questions", system_msg, stage_cfg, config, "cross_document_question_generation"
+        )
 
 
 def _process_questions(
