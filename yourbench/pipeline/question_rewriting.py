@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from loguru import logger
 
 from datasets import Dataset
-from yourbench.utils.prompts import QUESTION_REWRITING_SYSTEM_PROMPT, QUESTION_question_rewriting_USER_PROMPT
+
 from yourbench.utils.dataset_engine import custom_load_dataset, custom_save_dataset
 from yourbench.utils.parsing_engine import extract_content_from_xml_tags
 from yourbench.utils.question_models import QuestionRow
@@ -68,7 +68,7 @@ def _parse_question_rewriting_response(response: str) -> Optional[RewrittenQuest
 
 
 def _build_question_rewriting_calls(
-    dataset: Dataset, system_prompt: str, additional_instructions: str
+    dataset: Dataset, system_prompt: str, user_prompt_template: str, additional_instructions: str
 ) -> tuple[List[InferenceCall], List[int]]:
     """
     Build inference calls for question_rewriting questions.
@@ -102,7 +102,7 @@ def _build_question_rewriting_calls(
         answer = row.get("self_answer", "")
 
         # Build user prompt
-        user_prompt = QUESTION_question_rewriting_USER_PROMPT.format(
+        user_prompt = user_prompt_template.format(
             original_question=question,
             answer=answer,
             chunk_text=chunk_text,
@@ -174,6 +174,8 @@ def _process_question_type(
     question_type: str,
     load_subset: str,
     save_subset: str,
+    system_prompt: str,
+    user_prompt_template: str,
     additional_instructions: str,
 ) -> None:
     """
@@ -184,6 +186,8 @@ def _process_question_type(
         question_type: A string describing the question type for logging (e.g., "single-hop").
         load_subset: The dataset subset to load questions from.
         save_subset: The dataset subset to save rewritten questions to.
+        system_prompt: The system prompt for the rewriting model.
+        user_prompt_template: The user prompt template for the rewriting model.
         additional_instructions: Instructions for the rewriting model.
     """
     try:
@@ -195,7 +199,7 @@ def _process_question_type(
             return
 
         calls, indices = _build_question_rewriting_calls(
-            dataset, QUESTION_REWRITING_SYSTEM_PROMPT, additional_instructions
+            dataset, system_prompt, user_prompt_template, additional_instructions
         )
 
         if not calls:
@@ -234,11 +238,10 @@ def run(config: YourbenchConfig) -> None:
 
     logger.info("Starting question question_rewriting stage...")
 
-    additional_instructions = getattr(
-        stage_cfg,
-        "additional_instructions",
-        "Rewrite the question to sound more natural and conversational while preserving the exact meaning.",
-    )
+    # Get prompts from configuration
+    system_prompt = stage_cfg.question_rewriting_system_prompt
+    user_prompt_template = stage_cfg.question_rewriting_user_prompt
+    additional_instructions = stage_cfg.additional_instructions
 
     question_types_to_process = {
         "single-hop": ("single_shot_questions", "single_shot_questions_rewritten"),
@@ -251,6 +254,8 @@ def run(config: YourbenchConfig) -> None:
             question_type=question_type,
             load_subset=load_subset,
             save_subset=save_subset,
+            system_prompt=system_prompt,
+            user_prompt_template=user_prompt_template,
             additional_instructions=additional_instructions,
         )
 

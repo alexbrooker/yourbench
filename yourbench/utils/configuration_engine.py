@@ -226,6 +226,19 @@ class QuestionRewritingConfig:
     """Configuration for the question rewriting stage"""
 
     run: bool = False
+    question_rewriting_system_prompt: str | Path = Path("yourbench/prompts/question_rewriting/question_rewriting_system_prompt.md")
+    question_rewriting_user_prompt: str | Path = Path("yourbench/prompts/question_rewriting/question_rewriting_user_prompt.md")
+    additional_instructions: str = "Rewrite the question to sound more natural and conversational while preserving the exact meaning."
+
+    def __post_init__(self):
+        # Load prompt files if they exist
+        system_prompt_path = Path(self.question_rewriting_system_prompt)
+        if system_prompt_path.is_file():
+            self.question_rewriting_system_prompt = system_prompt_path.read_text(encoding="utf-8").strip()
+
+        user_prompt_path = Path(self.question_rewriting_user_prompt)
+        if user_prompt_path.is_file():
+            self.question_rewriting_user_prompt = user_prompt_path.read_text(encoding="utf-8").strip()
 
 
 @dataclass
