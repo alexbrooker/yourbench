@@ -11,16 +11,14 @@ from tqdm.asyncio import tqdm_asyncio
 from huggingface_hub import AsyncInferenceClient
 from yourbench.utils.configuration_engine import YourbenchConfig
 from yourbench.utils.inference.inference_tracking import (
+    InferenceMetrics,
     _count_tokens,
     _get_encoding,
-    _log_individual_call,
-    _count_message_tokens,
-    _update_aggregate_cost,
-    log_inference_metrics,
-    update_aggregate_metrics,
-    InferenceMetrics,
     _categorize_error,
+    _count_message_tokens,
+    log_inference_metrics,
     get_performance_summary,
+    update_aggregate_metrics,
 )
 
 
@@ -116,15 +114,20 @@ def _load_models(base_config: YourbenchConfig, step_name: str) -> List[Model]:
     return matched
 
 
-async def _get_response(model: Model, inference_call: InferenceCall, request_id: str = None, 
-                       concurrency_level: int = 1, queue_start_time: float = None) -> tuple[str, InferenceMetrics]:
+async def _get_response(
+    model: Model,
+    inference_call: InferenceCall,
+    request_id: str = None,
+    concurrency_level: int = 1,
+    queue_start_time: float = None,
+) -> tuple[str, InferenceMetrics]:
     """
     Send one inference call to the model endpoint with comprehensive metrics tracking.
     """
     start_time = time.time()
     request_id = request_id or str(uuid.uuid4())
     queue_time = (start_time - queue_start_time) if queue_start_time else 0.0
-    
+
     logger.debug(
         "START _get_response: model='{}' request_id='{}' (encoding='{}') (timestamp={:.4f})",
         model.model_name,
@@ -137,7 +140,7 @@ async def _get_response(model: Model, inference_call: InferenceCall, request_id:
     encoding = _get_encoding(model.encoding_name)
     input_tokens = _count_message_tokens(inference_call.messages, encoding)
     stage = ";".join(inference_call.tags) if inference_call.tags else "unknown"
-    
+
     metrics = InferenceMetrics(
         request_id=request_id,
         model_name=model.model_name,
@@ -179,12 +182,12 @@ async def _get_response(model: Model, inference_call: InferenceCall, request_id:
 
         output_content = response.choices[0].message.content
         finish_time = time.time()
-        
+
         # Update metrics for successful call
         metrics.output_tokens = _count_tokens(output_content, encoding)
         metrics.duration = finish_time - start_time
         metrics.success = True
-        
+
         logger.debug(
             "END _get_response: model='{}' request_id='{}' (timestamp={:.4f}, duration={:.2f}s, tokens={}/{})",
             model.model_name,
@@ -194,7 +197,7 @@ async def _get_response(model: Model, inference_call: InferenceCall, request_id:
             metrics.input_tokens,
             metrics.output_tokens,
         )
-        
+
         return output_content, metrics
 
     except Exception as e:
@@ -203,7 +206,7 @@ async def _get_response(model: Model, inference_call: InferenceCall, request_id:
         metrics.success = False
         metrics.error_type = _categorize_error(e)
         metrics.error_message = str(e)[:500]  # Truncate long error messages
-        
+
         logger.warning(
             "ERROR _get_response: model='{}' request_id='{}' error_type='{}' duration={:.2f}s: {}",
             model.model_name,
@@ -212,7 +215,7 @@ async def _get_response(model: Model, inference_call: InferenceCall, request_id:
             metrics.duration,
             str(e)[:100],
         )
-        
+
         raise e
     finally:
         # Always log metrics, whether successful or not
@@ -230,14 +233,15 @@ async def _get_response(model: Model, inference_call: InferenceCall, request_id:
         )
 
 
-async def _retry_with_backoff(model: Model, inference_call: InferenceCall, 
-                             semaphore: asyncio.Semaphore, concurrency_level: int) -> str:
+async def _retry_with_backoff(
+    model: Model, inference_call: InferenceCall, semaphore: asyncio.Semaphore, concurrency_level: int
+) -> str:
     """
     Attempt to get the model's response with exponential backoff and comprehensive tracking.
     """
     queue_start_time = time.time()
     request_id = str(uuid.uuid4())
-    
+
     for attempt in range(inference_call.max_retries):
         logger.debug(
             "Attempt {} of {} for model '{}' request_id='{}', waiting for semaphore...",
@@ -246,11 +250,11 @@ async def _retry_with_backoff(model: Model, inference_call: InferenceCall,
             model.model_name,
             request_id,
         )
-        
+
         semaphore_wait_start = time.time()
         async with semaphore:
             semaphore_wait_time = time.time() - semaphore_wait_start
-            
+
             logger.debug(
                 "Semaphore acquired for model='{}' request_id='{}' on attempt={} (wait_time={:.2f}s, max_concurrent={}).",
                 model.model_name,
@@ -259,21 +263,17 @@ async def _retry_with_backoff(model: Model, inference_call: InferenceCall,
                 semaphore_wait_time,
                 model.max_concurrent_requests,
             )
-            
+
             try:
                 # Calculate actual queue time including semaphore wait
                 actual_queue_start = queue_start_time if attempt == 0 else semaphore_wait_start
                 output_content, metrics = await _get_response(
-                    model, 
-                    inference_call, 
-                    request_id, 
-                    concurrency_level,
-                    actual_queue_start
+                    model, inference_call, request_id, concurrency_level, actual_queue_start
                 )
-                
+
                 # Update retry count in metrics
                 metrics.retry_count = attempt
-                
+
                 # Log success summary
                 logger.debug(
                     "SUCCESS: model='{}' request_id='{}' after {} attempts (total_time={:.2f}s, tokens={}/{})",
@@ -284,9 +284,9 @@ async def _retry_with_backoff(model: Model, inference_call: InferenceCall,
                     metrics.input_tokens,
                     metrics.output_tokens,
                 )
-                
+
                 return output_content
-                
+
             except Exception as e:
                 attempt_error = _categorize_error(e)
                 logger.warning(
@@ -323,7 +323,7 @@ async def _retry_with_backoff(model: Model, inference_call: InferenceCall,
         encoding = _get_encoding(model.encoding_name)
         input_tokens = _count_message_tokens(inference_call.messages, encoding)
         stage = ";".join(inference_call.tags) if inference_call.tags else "unknown"
-        
+
         failed_metrics = InferenceMetrics(
             request_id=request_id,
             model_name=model.model_name,
@@ -340,7 +340,7 @@ async def _retry_with_backoff(model: Model, inference_call: InferenceCall,
             temperature=inference_call.temperature,
             encoding_name=model.encoding_name,
         )
-        
+
         log_inference_metrics(failed_metrics)
         update_aggregate_metrics(
             model.model_name,
@@ -353,7 +353,7 @@ async def _retry_with_backoff(model: Model, inference_call: InferenceCall,
             Exception("Max retries exceeded"),
             concurrency_level,
         )
-        
+
     except Exception as metrics_error:
         logger.error(f"Error logging failure metrics for {model.model_name}: {metrics_error}")
 
@@ -382,12 +382,12 @@ async def _run_inference_async_helper(
 
     tasks = []
     total_start_time = time.time()
-    
+
     # Build tasks with concurrency level tracking
     for model in models:
         semaphore = model_semaphores[model.model_name]
         concurrency_level = model.max_concurrent_requests
-        
+
         for call in inference_calls:
             task = _retry_with_backoff(model, call, semaphore, concurrency_level)
             tasks.append(task)
@@ -401,7 +401,7 @@ async def _run_inference_async_helper(
 
     # Run all tasks concurrently with progress tracking
     results = await tqdm_asyncio.gather(*tasks, desc="Running inference")
-    
+
     total_duration = time.time() - total_start_time
     logger.success(
         "Completed parallel inference for all models in {:.2f}s (avg {:.2f}s per task)",
@@ -461,7 +461,7 @@ def run_inference(
         }
     """
     logger.info(f"Starting inference for step '{step_name}' with {len(inference_calls)} calls")
-    
+
     # Load relevant models for the pipeline step
     models = _load_models(config, step_name)
     if not models:
@@ -478,16 +478,16 @@ def run_inference(
         start_time = time.time()
         result = asyncio.run(_run_inference_async_helper(models, inference_calls))
         total_time = time.time() - start_time
-        
+
         logger.success(
             "Inference completed for step '{}' in {:.2f}s with {} models",
             step_name,
             total_time,
             len(models),
         )
-        
+
         return result
-        
+
     except Exception as e:
         logger.critical("Error running inference for step '{}': {}", step_name, e)
         return {}
