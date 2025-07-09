@@ -70,10 +70,6 @@ def run_pipeline(config_file_path: str, debug: bool = False, **kwargs) -> None:
         elapsed = run_stage(stage, config)
         logger.success(f"Completed {stage} in {elapsed:.3f}s")
 
-    # Remove the problematic extra stages check since we're dealing with a dataclass
-    # if extra := set(pipeline) - set(STAGE_ORDER):
-    #     logger.warning(f"Unrecognized stages: {extra}")
-
     try:
         upload_dataset_card(config)
     except Exception as e:
