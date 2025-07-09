@@ -9,6 +9,7 @@ from tqdm.auto import tqdm
 
 from yourbench.utils.chunking_utils import split_into_token_chunks
 from yourbench.utils.dataset_engine import custom_load_dataset, custom_save_dataset
+from yourbench.utils.configuration_engine import YourbenchConfig
 
 
 @dataclass(frozen=True)
@@ -37,9 +38,9 @@ class MultiHopChunk:
     chunks_text: list[str]
 
 
-def extract_config(config: dict[str, Any]) -> ChunkingConfig:
+def extract_config(config: YourbenchConfig) -> ChunkingConfig:
     """Extract chunking configuration from pipeline config."""
-    chunking_params = config.get("pipeline", {}).get("chunking", {}).get("chunking_configuration", {})
+    chunking_params = getattr(config.pipeline_config.chunking, "chunking_configuration", {})
     return ChunkingConfig(
         max_tokens=chunking_params.get("l_max_tokens", 256),
         h_min=chunking_params.get("h_min", 2),
@@ -119,15 +120,14 @@ def create_multihop_chunks(
     ]
 
 
-def run(config: dict[str, Any]) -> None:
+def run(config: YourbenchConfig) -> None:
     """
     Main entry point for the chunking pipeline stage.
 
     Args:
-        config: Pipeline configuration dictionary
+        config: Pipeline configuration
     """
-    chunking_config = config.get("pipeline", {}).get("chunking", {})
-    if not chunking_config.get("run", False):
+    if not config.pipeline_config.chunking.run:
         logger.info("Chunking stage is disabled. Skipping.")
         return
 
