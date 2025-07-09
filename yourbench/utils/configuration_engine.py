@@ -57,7 +57,7 @@ class HuggingFaceConfig:
     local_saving: bool = True
     upload_card: bool = True
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         _expand_dataclass(self)
 
 
@@ -76,7 +76,7 @@ class ModelConfig:
     provider: str | None = None
     bill_to: str | None = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         _expand_dataclass(self)
 
         # if base_url is not set, and provider is not set, default to "auto"
@@ -113,10 +113,12 @@ class IngestionConfig:
         ]
     )
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         # convert string directories to Path objects
-        self.source_documents_dir = Path(self.source_documents_dir)
-        self.output_dir = Path(self.output_dir)
+        if self.source_documents_dir:
+            self.source_documents_dir = Path(self.source_documents_dir)
+        if self.output_dir:
+            self.output_dir = Path(self.output_dir)
 
         prompt_path = Path(self.pdf_llm_prompt)
         if prompt_path.is_file():
@@ -140,7 +142,7 @@ class SummarizationConfig:
         "yourbench/prompts/summarization/combine_summaries_user_prompt.md"
     )
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         # Load prompt files if they exist
         summarization_prompt_path = Path(self.summarization_user_prompt)
         if summarization_prompt_path.is_file():
@@ -183,7 +185,7 @@ class SingleShotQuestionGenerationConfig:
     )
     single_shot_user_prompt: str | Path = Path("yourbench/prompts/question_generation/single_shot_user_prompt.md")
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         # Load prompt files if they exist
         single_shot_system_prompt_path = Path(self.single_shot_system_prompt)
         if single_shot_system_prompt_path.is_file():
@@ -212,7 +214,7 @@ class MultiHopQuestionGenerationConfig:
     )
     multi_hop_user_prompt: str | Path = Path("yourbench/prompts/question_generation/multi_hop_user_prompt.md")
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         # Load prompt files if they exist
         multi_hop_system_prompt_path = Path(self.multi_hop_system_prompt)
         if multi_hop_system_prompt_path.is_file():
@@ -243,7 +245,7 @@ class CrossDocumentQuestionGenerationConfig:
     num_docs_per_combination: list[int] = field(default_factory=lambda: [2, 5])
     random_seed: int = 42
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         # Load prompt files if they exist
         multi_hop_system_prompt_path = Path(self.multi_hop_system_prompt)
         if multi_hop_system_prompt_path.is_file():
@@ -273,7 +275,7 @@ class QuestionRewritingConfig:
         "Rewrite the question to sound more natural and conversational while preserving the exact meaning."
     )
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         # Load prompt files if they exist
         system_prompt_path = Path(self.question_rewriting_system_prompt)
         if system_prompt_path.is_file():
@@ -331,7 +333,7 @@ class YourbenchConfig:
     model_roles: dict[str, list[str]] = field(default_factory=dict)
     debug: bool = False
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Assign default model roles for each pipeline stage if not specified."""
         if not self.model_list:
             return
