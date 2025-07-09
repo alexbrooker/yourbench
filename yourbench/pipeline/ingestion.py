@@ -55,7 +55,7 @@ def run(config: YourbenchConfig) -> None:
 
 def _get_processor(config: YourbenchConfig) -> MarkItDown:
     """Initialize markdown processor with optional LLM support."""
-    model = config.model_list[0] # choose the first model in the list. TODO: add support for model choice.
+    model = config.model_list[0]  # choose the first model in the list. TODO: add support for model choice.
     if not config.pipeline_config.ingestion.llm_ingestion or not model:
         return MarkItDown()
 
@@ -125,23 +125,25 @@ def _extract_html(path: Path) -> str | None:
 def _process_pdf_llm(pdf_path: Path, config: YourbenchConfig) -> str:
     """Convert every page of a PDF to Markdown using an LLM."""
     from dataclasses import asdict
-    
+
     # Convert YourbenchConfig to dict for inference functions
     config_dict = asdict(config)
-    
+
     # Handle case where YAML has 'models' instead of 'model_list'
     if not config_dict.get("model_list") and config.model_list:
         config_dict["model_list"] = [asdict(model) for model in config.model_list]
-    
+
     models = _load_models(config_dict, "ingestion")
-    
+
     # If no models found but we have models in config, use the first one
     if not models and config.model_list:
-        logger.info(f"No models configured for ingestion role, using first available model: {config.model_list[0].model_name}")
+        logger.info(
+            f"No models configured for ingestion role, using first available model: {config.model_list[0].model_name}"
+        )
         first_model_dict = asdict(config.model_list[0])
         config_dict["model_list"] = [first_model_dict]
         models = _load_models(config_dict, "ingestion")
-    
+
     if not models:
         logger.warning(f"No LLM models configured for PDF ingestion of {pdf_path.name}, falling back to MarkItDown")
         try:
