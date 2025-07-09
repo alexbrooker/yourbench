@@ -99,26 +99,15 @@ def run(config: YourbenchConfig) -> None:
 
 def _get_processor(config: YourbenchConfig) -> MarkItDown:
     """Initialize markdown processor with optional LLM support."""
-    try:
-        # Check if model_roles exists as an attribute
-        model_roles = getattr(config, "model_roles", {}).get("ingestion", [])
-        model_list = config.model_list
+    model = config.model_list[0]
 
-        if not model_list:
-            return MarkItDown()
-    except Exception as e:
-        logger.warning(f"Failed to get processor: {e}")
-        return MarkItDown()
-
-    # Find matching model or use first one
-    model = next((m for m in model_list if m.model_name in model_roles), model_list[0] if not model_roles else None)
-
-    if not model:
+    if not config.pipeline_config.ingestion.llm_ingestion or not model:
         return MarkItDown()
 
     try:
         client = InferenceClient(
-            base_url=model.base_url, api_key=model.api_key, provider=getattr(model, "provider", None)
+            base_url=model.base_url,
+            api_key=model.api_key,
         )
         logger.debug(f"Using LLM: {model.model_name}")
         return MarkItDown(llm_client=client, llm_model=model.model_name)
@@ -180,7 +169,24 @@ def _extract_html(path: Path) -> str | None:
 
 def _process_pdf_llm(pdf_path: Path, config: YourbenchConfig) -> str:
     """Convert every page of a PDF to Markdown using an LLM."""
-    models = _load_models(config, "ingestion")
+    from dataclasses import asdict
+    
+    # Convert YourbenchConfig to dict for inference functions
+    config_dict = asdict(config)
+    
+    # Handle case where YAML has 'models' instead of 'model_list'
+    if not config_dict.get("model_list") and config.model_list:
+        config_dict["model_list"] = [asdict(model) for model in config.model_list]
+    
+    models = _load_models(config_dict, "ingestion")
+    
+    # If no models found but we have models in config, use the first one
+    if not models and config.model_list:
+        logger.info(f"No models configured for ingestion role, using first available model: {config.model_list[0].model_name}")
+        first_model_dict = asdict(config.model_list[0])
+        config_dict["model_list"] = [first_model_dict]
+        models = _load_models(config_dict, "ingestion")
+    
     if not models:
         logger.warning(f"No LLM models configured for PDF ingestion of {pdf_path.name}, falling back to MarkItDown")
         try:
@@ -221,7 +227,7 @@ def _process_pdf_llm(pdf_path: Path, config: YourbenchConfig) -> str:
     ]
 
     pages: list[str] = []
-    responses = run_inference(config, "ingestion", calls)
+    responses = run_inference(config_dict, "ingestion", calls)
     if responses:
         model_name = next(iter(responses))
         pages.extend(responses[model_name])
