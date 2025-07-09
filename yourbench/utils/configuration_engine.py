@@ -5,7 +5,7 @@ Module handles everything related to the configuration of the pipeline.
 import os
 from typing import Any
 from pathlib import Path
-from dataclasses import fields, dataclass, field
+from dataclasses import field, fields, dataclass
 
 import yaml
 from loguru import logger
@@ -57,6 +57,7 @@ class HuggingFaceConfig:
     def __post_init__(self):
         _expand_dataclass(self)
 
+
 @dataclass
 class ModelConfig:
     """Configuration for a model."""
@@ -67,7 +68,6 @@ class ModelConfig:
     max_concurrent_requests: int = 32
     encoding_name: str = "cl100k_base"
 
-
     # You can find the list of available providers here: https://huggingface.co/docs/huggingface_hub/guides/inference#supported-providers-and-tasks
     # huggingface specific
     provider: str | None = None
@@ -75,6 +75,7 @@ class ModelConfig:
 
     def __post_init__(self):
         _expand_dataclass(self)
+
 
 @dataclass
 class YourbenchConfig:
