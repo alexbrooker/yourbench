@@ -161,13 +161,21 @@ def _load_local(path: Path, subset: str | None) -> Dataset:
     logger.info(f"Loading '{subset or 'default'}' from {path}")
     dataset = load_from_disk(str(path))
 
-    if subset is None or not isinstance(dataset, DatasetDict):
+    if subset is None:
+        return dataset
+
+    if not isinstance(dataset, DatasetDict):
+        # If subset is requested but dataset is not a DatasetDict,
+        # return the dataset with a warning (assuming it's the one they want)
+        logger.warning(f"Subset '{subset}' requested but dataset is not a DatasetDict. Returning the dataset anyway.")
         return dataset
 
     if subset in dataset:
         return dataset[subset]
 
-    raise ConfigurationError(f"Subset '{subset}' not found in local dataset")
+    # Provide a helpful error message showing available subsets
+    available_subsets = list(dataset.keys())
+    raise ConfigurationError(f"Subset '{subset}' not found in local dataset. Available subsets: {available_subsets}")
 
 
 def _load_hub(repo_id: str, subset: str | None, token: str | None) -> Dataset:
@@ -187,17 +195,20 @@ def _load_hub(repo_id: str, subset: str | None, token: str | None) -> Dataset:
         raise
 
 
-def _merge_datasets(existing: Dataset | DatasetDict, new: Dataset, subset: str | None) -> Dataset | DatasetDict:
-    """Merge new dataset with existing. If subset exists, new data is concatenated."""
+def _merge_datasets(existing: Dataset | DatasetDict, new: Dataset, subset: str | None, concat_if_exist: bool = False) -> Dataset | DatasetDict:
+    """Merge new dataset with existing. If subset exists and concat_if_exist is True, new data is concatenated."""
     if subset is None:
         if isinstance(existing, Dataset):
-            return concatenate_datasets([existing, new])
+            if concat_if_exist:
+                return concatenate_datasets([existing, new])
+            else:
+                return new
         return new
 
     if not isinstance(existing, DatasetDict):
         existing = DatasetDict({"default": existing})
 
-    if subset in existing:
+    if subset in existing and concat_if_exist:
         try:
             # Concatenate new data with the existing subset
             new = concatenate_datasets([existing[subset], new])
@@ -260,7 +271,7 @@ def custom_save_dataset(
         logger.info(f"Saving to {settings.local_dir}")
 
         existing = None
-        if settings.concat_if_exist and settings.local_dir.exists():
+        if settings.local_dir.exists():
             try:
                 existing = load_from_disk(str(settings.local_dir))
             except (FileNotFoundError, PermissionError, OSError) as e:
@@ -270,7 +281,7 @@ def custom_save_dataset(
                 raise
 
         merged = (
-            _merge_datasets(existing, dataset, subset)
+            _merge_datasets(existing, dataset, subset, settings.concat_if_exist)
             if existing
             else (DatasetDict({subset: dataset}) if subset else dataset)
         )
