@@ -62,32 +62,14 @@ from yourbench.utils.inference.inference_core import (
     _load_models,
     run_inference,
 )
+from yourbench.utils.configuration_engine import YourbenchConfig
 
 
-def run(config: dict[str, Any]) -> None:
+def run(config: YourbenchConfig) -> None:
     """Convert documents to markdown and optionally upload to Hub."""
-    ingestion = config.get("pipeline", {}).get("ingestion", {})
+    source_dir = config.pipeline_config.ingestion.source_documents_dir
+    output_dir = config.pipeline_config.ingestion.output_dir
 
-    if not ingestion.get("run", True):
-        logger.info("Ingestion disabled")
-        return
-
-    source_dir = Path(ingestion.get("source_documents_dir", ""))
-    output_dir = Path(ingestion.get("output_dir", ""))
-
-    if not source_dir or not output_dir:
-        logger.error("Missing source or output directory")
-        return
-
-    if not source_dir.exists():
-        logger.error(f"Source directory does not exist: {source_dir}")
-        return
-
-    if not source_dir.is_dir():
-        logger.error(f"Source path is not a directory: {source_dir}")
-        return
-
-    output_dir.mkdir(parents=True, exist_ok=True)
 
     # Process files
     processor = _get_processor(config)
@@ -113,36 +95,41 @@ def run(config: dict[str, Any]) -> None:
     logger.info(f"Processed {files_processed} files")
 
     # Upload to hub if configured - only upload successfully converted files
-    if ingestion.get("upload_to_hub", True) and successful_outputs:
+    if config.pipeline_config.ingestion.upload_to_hub and successful_outputs:
         _upload_to_hub(config, successful_outputs)
 
 
-def _get_processor(config: dict[str, Any]) -> MarkItDown:
+def _get_processor(config: YourbenchConfig) -> MarkItDown:
     """Initialize markdown processor with optional LLM support."""
-    model_roles = config.get("model_roles", {}).get("ingestion", [])
-    model_list = config.get("model_list", [])
+    try:
+        # Check if model_roles exists as an attribute
+        model_roles = getattr(config, 'model_roles', {}).get("ingestion", [])
+        model_list = config.model_list
 
-    if not model_list:
+        if not model_list:
+            return MarkItDown()
+    except Exception as e:
+        logger.warning(f"Failed to get processor: {e}")
         return MarkItDown()
 
     # Find matching model or use first one
     model = next(
-        (m for m in model_list if m.get("model_name") in model_roles), model_list[0] if not model_roles else None
+        (m for m in model_list if m.model_name in model_roles), model_list[0] if not model_roles else None
     )
 
     if not model:
         return MarkItDown()
 
     try:
-        client = InferenceClient(base_url=model["base_url"], api_key=model["api_key"], provider=model.get("provider"))
-        logger.debug(f"Using LLM: {model['model_name']}")
-        return MarkItDown(llm_client=client, llm_model=model["model_name"])
+        client = InferenceClient(base_url=model.base_url, api_key=model.api_key, provider=getattr(model, 'provider', None))
+        logger.debug(f"Using LLM: {model.model_name}")
+        return MarkItDown(llm_client=client, llm_model=model.model_name)
     except Exception as e:
         logger.warning(f"Failed to init LLM processor: {e}")
         return MarkItDown()
 
 
-def _convert_file(file_path: Path, config: dict[str, Any], processor: MarkItDown) -> str | None:
+def _convert_file(file_path: Path, config: YourbenchConfig, processor: MarkItDown) -> str | None:
     """Convert file to markdown based on type."""
     supported_extensions = {
         ".md",
@@ -176,7 +163,7 @@ def _convert_file(file_path: Path, config: dict[str, Any], processor: MarkItDown
             # Fallback to MarkItDown
             return processor.convert(str(file_path)).text_content
 
-        case ".pdf" if config.get("pipeline", {}).get("ingestion", {}).get("llm_ingestion"):
+        case ".pdf" if getattr(config.pipeline_config.ingestion, 'llm_ingestion', False):
             return _process_pdf_llm(file_path, config)
 
         case _:
@@ -193,7 +180,7 @@ def _extract_html(path: Path) -> str | None:
         return None
 
 
-def _process_pdf_llm(pdf_path: Path, config: dict[str, Any]) -> str:
+def _process_pdf_llm(pdf_path: Path, config: YourbenchConfig) -> str:
     """Convert every page of a PDF to Markdown using an LLM."""
     models = _load_models(config, "ingestion")
     if not models:
@@ -204,7 +191,7 @@ def _process_pdf_llm(pdf_path: Path, config: dict[str, Any]) -> str:
             logger.error(f"Fallback conversion failed for {pdf_path.name}: {exc}")
             return ""
 
-    dpi = config.get("pipeline", {}).get("ingestion", {}).get("pdf_dpi", 300)
+    dpi = getattr(config.pipeline_config.ingestion, 'pdf_dpi', 300)
     images = _pdf_to_images(pdf_path, dpi)
     if not images:
         return ""
@@ -267,7 +254,7 @@ def _img_to_b64(image: Image.Image) -> str:
         return base64.b64encode(buffer.getvalue()).decode()
 
 
-def _upload_to_hub(config: dict[str, Any], md_files: list[Path]):
+def _upload_to_hub(config: YourbenchConfig, md_files: list[Path]):
     """Upload markdown files to Hugging Face Hub."""
     if not md_files:
         logger.warning("No markdown files to upload")
