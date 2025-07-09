@@ -66,12 +66,24 @@ def _log_individual_call(model_name: str, input_tokens: int, output_tokens: int,
     try:
         _ensure_logs_dir()
         is_new_file = not os.path.exists(_individual_log_file)
+        
+        # Check if existing file has a header
+        file_has_header = False
+        if not is_new_file:
+            try:
+                with open(_individual_log_file, "r", newline="", encoding="utf-8") as f:
+                    first_line = f.readline().strip()
+                    file_has_header = first_line == "timestamp,model_name,stage,input_tokens,output_tokens,encoding_used"
+            except Exception:
+                # If we can't read the file, assume it doesn't have a header
+                file_has_header = False
+        
         mode = "a" if not is_new_file else "w"
 
         with open(_individual_log_file, mode, newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
-            # Write header only if the file is new or header wasn't written yet in this run
-            if is_new_file or not _individual_header_written:
+            # Write header only if the file is new or doesn't have a header and we haven't written one in this run
+            if is_new_file or (not file_has_header and not _individual_header_written):
                 writer.writerow(["timestamp", "model_name", "stage", "input_tokens", "output_tokens", "encoding_used"])
                 _individual_header_written = True
 
