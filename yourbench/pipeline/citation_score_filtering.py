@@ -22,7 +22,7 @@ def _get_stage_config(config: YourbenchConfig) -> StageConfig:
     stage_cfg = config.pipeline_config.citation_score_filtering
     return StageConfig(
         run=stage_cfg.run,
-        subset=getattr(stage_cfg, "subset", "lighteval"),
+        subset=getattr(stage_cfg, "subset", "prepared_lighteval"),
         alpha=getattr(stage_cfg, "alpha", 0.7),
         beta=getattr(stage_cfg, "beta", 0.3),
     )
