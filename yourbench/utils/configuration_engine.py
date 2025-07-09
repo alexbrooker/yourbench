@@ -89,7 +89,7 @@ class IngestionConfig:
     """Configuration for the ingestion stage"""
 
     run: bool = False
-    source_documents_dir: Path | None = Path("data/raw")
+    source_documents_dir: Path | None = Path("example/data/raw")
     output_dir: Path | None = Path("data/processed")
     upload_to_hub: bool = True
     llm_ingestion: bool = False
@@ -110,6 +110,9 @@ class SummarizationConfig:
     """Configuration for the summarization stage"""
 
     run: bool = False
+    max_tokens: int = 32768
+    token_overlap: int = 512
+    encoding_name: str = "cl100k_base"
 
 
 @dataclass
@@ -254,6 +257,13 @@ class YourbenchConfig:
         for stage_name, config_data in pipeline_data.items():
             if stage_name in stage_config_classes:
                 config_class = stage_config_classes[stage_name]
+
+                if config_data is None:
+                    config_data = {}
+
+                # If a stage is present in the config, assume it should run unless `run: false` is explicit.
+                config_data.setdefault("run", True)
+
                 pipeline_kwargs[stage_name] = config_class(**config_data)
             else:
                 logger.warning(f"Unknown pipeline stage: {stage_name}")
