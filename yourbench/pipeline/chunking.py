@@ -1,5 +1,4 @@
 import time
-from typing import Any
 from dataclasses import asdict, dataclass
 from collections.abc import Sequence
 

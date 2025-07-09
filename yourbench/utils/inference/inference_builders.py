@@ -30,7 +30,11 @@ def build_single_shot_inference_calls(dataset, system_msg, stage_cfg, sampling_c
                     title=row.get("document_filename", f"doc_{idx}"),
                     document_summary=row.get("document_summary", ""),
                     text_chunk=chunk_text,
-                    additional_instructions=getattr(stage_cfg, "additional_instructions", "") if hasattr(stage_cfg, "additional_instructions") else stage_cfg.get("additional_instructions", "") if isinstance(stage_cfg, dict) else "",
+                    additional_instructions=getattr(stage_cfg, "additional_instructions", "")
+                    if hasattr(stage_cfg, "additional_instructions")
+                    else stage_cfg.get("additional_instructions", "")
+                    if isinstance(stage_cfg, dict)
+                    else "",
                 ),
             }
             calls.append(InferenceCall(messages=[system_msg, user_msg], tags=["single_shot_qa"]))
@@ -44,7 +48,13 @@ def build_multi_hop_inference_calls(dataset, system_msg, stage_cfg):
     index_map = []
 
     for idx, row in enumerate(dataset):
-        chunk_sampling = getattr(stage_cfg, "chunk_sampling", {}) if hasattr(stage_cfg, "chunk_sampling") else stage_cfg.get("chunk_sampling", {}) if isinstance(stage_cfg, dict) else {}
+        chunk_sampling = (
+            getattr(stage_cfg, "chunk_sampling", {})
+            if hasattr(stage_cfg, "chunk_sampling")
+            else stage_cfg.get("chunk_sampling", {})
+            if isinstance(stage_cfg, dict)
+            else {}
+        )
         groups = sample_multihop_groups(row.get("multihop_chunks") or [], chunk_sampling)
         for group in groups:
             # TODO how it's possible here?
@@ -63,7 +73,11 @@ def build_multi_hop_inference_calls(dataset, system_msg, stage_cfg):
                     title=row.get("document_filename", ""),
                     document_summary=row.get("document_summary", ""),
                     chunks=full_text,
-                    additional_instructions=getattr(stage_cfg, "additional_instructions", "") if hasattr(stage_cfg, "additional_instructions") else stage_cfg.get("additional_instructions", "") if isinstance(stage_cfg, dict) else "",
+                    additional_instructions=getattr(stage_cfg, "additional_instructions", "")
+                    if hasattr(stage_cfg, "additional_instructions")
+                    else stage_cfg.get("additional_instructions", "")
+                    if isinstance(stage_cfg, dict)
+                    else "",
                 ),
             }
             calls.append(InferenceCall(messages=[system_msg, user_msg], tags=["multi_hop_qa"]))
