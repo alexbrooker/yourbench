@@ -20,7 +20,6 @@ Main Functions:
 """
 
 from __future__ import annotations
-from typing import Any
 
 from loguru import logger
 
@@ -38,6 +37,7 @@ from yourbench.utils.parsing_engine import (
     _remove_duplicate_questions,
     parse_single_shot_responses,
 )
+from yourbench.utils.configuration_engine import YourbenchConfig
 from yourbench.utils.inference.inference_core import run_inference
 from yourbench.utils.inference.inference_builders import (
     build_multi_hop_inference_calls,
@@ -50,16 +50,16 @@ MULTI_HOP_KEY = "multi_hop_question_generation"
 CROSS_DOCUMENT_KEY = "cross_document_question_generation"
 
 
-def run_single_shot(config: dict[str, Any]) -> None:
+def run_single_shot(config: YourbenchConfig) -> None:
     """
     Orchestrates the single-hop question generation pipeline.
     """
-    stage_cfg = config.get("pipeline", {}).get(SINGLE_SHOT_KEY, {})
-    if not stage_cfg.get("run", False):
+    stage_cfg = config.pipeline_config.single_shot_question_generation
+    if not stage_cfg.run:
         logger.info("single_shot_question_generation stage is disabled.")
         return
 
-    question_mode = stage_cfg.get("question_mode", "open-ended")
+    question_mode = getattr(stage_cfg, "question_mode", "open-ended")
     allowed_types = {"open-ended", "multi-choice"}
     if question_mode not in allowed_types:
         logger.warning(f"Invalid question_mode '{question_mode}', defaulting to 'open-ended'")
@@ -99,21 +99,21 @@ def run_single_shot(config: dict[str, Any]) -> None:
         custom_save_dataset(Dataset.from_list(final_rows), config=config, subset="single_shot_questions")
 
 
-def run_multi_hop(config: dict[str, Any]) -> None:
+def run_multi_hop(config: YourbenchConfig) -> None:
     """
     Orchestrates both multi-hop and cross-document question generation pipelines,
     if enabled in config
     """
-    stage_cfg = config.get("pipeline", {}).get(MULTI_HOP_KEY, {})
-    cross_cfg = stage_cfg.get("cross_document", {})
-    run_multi = stage_cfg.get("run", False)
-    run_cross = cross_cfg.get("enable", False)
+    stage_cfg = config.pipeline_config.multi_hop_question_generation
+    cross_cfg = getattr(stage_cfg, "cross_document", {})
+    run_multi = stage_cfg.run
+    run_cross = cross_cfg.get("enable", False) if cross_cfg else False
 
     if not run_multi:
         logger.info("Multi-hop question generation is disabled.")
         return
 
-    question_mode = stage_cfg.get("question_mode", "open-ended")
+    question_mode = getattr(stage_cfg, "question_mode", "open-ended")
     if question_mode not in {"open-ended", "multi-choice"}:
         logger.warning(f"Invalid question_mode '{question_mode}', defaulting to 'open-ended'")
         question_mode = "open-ended"
