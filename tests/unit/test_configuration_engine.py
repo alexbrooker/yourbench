@@ -3,21 +3,20 @@
 import os
 import tempfile
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
-import pytest
 import yaml
 
 from yourbench.utils.configuration_engine import (
-    YourbenchConfig,
-    HuggingFaceConfig,
     ModelConfig,
+    ChunkingConfig,
     PipelineConfig,
     IngestionConfig,
+    YourbenchConfig,
+    HuggingFaceConfig,
     SummarizationConfig,
-    ChunkingConfig,
-    SingleShotQuestionGenerationConfig,
     MultiHopQuestionGenerationConfig,
+    SingleShotQuestionGenerationConfig,
     CrossDocumentQuestionGenerationConfig,
     _expand_env,
     _expand_dataclass,
@@ -86,10 +85,10 @@ class TestHuggingFaceConfig:
     def test_default_initialization(self):
         """Test HuggingFaceConfig with default values."""
         config = HuggingFaceConfig()
-        assert config.private == False
-        assert config.concat_if_exist == False
-        assert config.local_saving == True
-        assert config.upload_card == True
+        assert not config.private
+        assert not config.concat_if_exist
+        assert config.local_saving
+        assert config.upload_card
 
     def test_env_variable_expansion(self):
         """Test that environment variables are expanded during initialization."""
@@ -107,9 +106,9 @@ class TestHuggingFaceConfig:
             local_saving=False,
         )
         assert config.hf_dataset_name == "custom_dataset"
-        assert config.private == True
-        assert config.concat_if_exist == True
-        assert config.local_saving == False
+        assert config.private
+        assert config.concat_if_exist
+        assert not config.local_saving
 
 
 class TestModelConfig:
@@ -156,9 +155,9 @@ class TestPipelineConfig:
     def test_nested_config_initialization(self):
         """Test that nested configs are properly initialized."""
         config = PipelineConfig()
-        assert config.ingestion.run == False
-        assert config.summarization.run == False
-        assert config.chunking.run == False
+        assert not config.ingestion.run
+        assert not config.summarization.run
+        assert not config.chunking.run
 
 
 class TestIngestionConfig:
@@ -167,19 +166,16 @@ class TestIngestionConfig:
     def test_default_initialization(self):
         """Test IngestionConfig with default values."""
         config = IngestionConfig()
-        assert config.run == False
-        assert config.upload_to_hub == True
-        assert config.llm_ingestion == False
+        assert not config.run
+        assert config.upload_to_hub
+        assert not config.llm_ingestion
         assert config.pdf_dpi == 300
         assert isinstance(config.source_documents_dir, Path)
         assert isinstance(config.output_dir, Path)
 
     def test_path_conversion(self):
         """Test that string paths are converted to Path objects."""
-        config = IngestionConfig(
-            source_documents_dir="custom/source",
-            output_dir="custom/output"
-        )
+        config = IngestionConfig(source_documents_dir="custom/source", output_dir="custom/output")
         assert isinstance(config.source_documents_dir, Path)
         assert isinstance(config.output_dir, Path)
         assert str(config.source_documents_dir) == "custom/source"
@@ -187,13 +183,13 @@ class TestIngestionConfig:
 
     def test_prompt_loading(self):
         """Test that prompt files are loaded if they exist."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
             f.write("Test prompt content")
             f.flush()
-            
+
             config = IngestionConfig(pdf_llm_prompt=f.name)
             assert config.pdf_llm_prompt == "Test prompt content"
-            
+
             # Clean up
             os.unlink(f.name)
 
@@ -204,7 +200,7 @@ class TestChunkingConfig:
     def test_default_initialization(self):
         """Test ChunkingConfig with default values."""
         config = ChunkingConfig()
-        assert config.run == False
+        assert not config.run
         assert config.l_max_tokens == 8192
         assert config.token_overlap == 512
         assert config.encoding_name == "cl100k_base"
@@ -214,12 +210,7 @@ class TestChunkingConfig:
 
     def test_custom_values(self):
         """Test ChunkingConfig with custom values."""
-        config = ChunkingConfig(
-            l_max_tokens=1024,
-            h_min=3,
-            h_max=7,
-            num_multihops_factor=2
-        )
+        config = ChunkingConfig(l_max_tokens=1024, h_min=3, h_max=7, num_multihops_factor=2)
         assert config.l_max_tokens == 1024
         assert config.h_min == 3
         assert config.h_max == 7
@@ -232,19 +223,19 @@ class TestQuestionGenerationConfigs:
     def test_single_shot_config(self):
         """Test SingleShotQuestionGenerationConfig."""
         config = SingleShotQuestionGenerationConfig()
-        assert config.run == False
+        assert not config.run
         assert config.question_mode == "open-ended"
 
     def test_multi_hop_config(self):
         """Test MultiHopQuestionGenerationConfig."""
         config = MultiHopQuestionGenerationConfig()
-        assert config.run == False
+        assert not config.run
         assert config.question_mode == "open-ended"
 
     def test_cross_document_config(self):
         """Test CrossDocumentQuestionGenerationConfig."""
         config = CrossDocumentQuestionGenerationConfig()
-        assert config.run == False
+        assert not config.run
         assert config.max_combinations == 100
         assert config.chunks_per_document == 1
         assert config.num_docs_per_combination == [2, 5]
@@ -261,13 +252,13 @@ class TestYourbenchConfig:
         assert isinstance(config.pipeline_config, PipelineConfig)
         assert config.model_list == []
         assert config.model_roles == {}
-        assert config.debug == False
+        assert not config.debug
 
     def test_model_role_assignment(self):
         """Test automatic model role assignment."""
         model = ModelConfig(model_name="test_model")
         config = YourbenchConfig(model_list=[model])
-        
+
         # Check that model roles are assigned
         assert "ingestion" in config.model_roles
         assert "summarization" in config.model_roles
@@ -313,32 +304,32 @@ class TestYourbenchConfig:
             },
         }
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             yaml.dump(yaml_content, f)
             f.flush()
-            
+
             config = YourbenchConfig.from_yaml(f.name)
-            
+
             # Test HF configuration
             assert config.hf_configuration.hf_dataset_name == "test_dataset"
-            assert config.hf_configuration.private == True
-            
+            assert config.hf_configuration.private
+
             # Test model configuration
             assert len(config.model_list) == 1
             assert config.model_list[0].model_name == "test_model"
             assert config.model_list[0].max_concurrent_requests == 16
-            
+
             # Test model roles
             assert config.model_roles["ingestion"] == ["test_model"]
             assert config.model_roles["summarization"] == ["test_model"]
-            
+
             # Test pipeline configuration
-            assert config.pipeline_config.ingestion.run == True
+            assert config.pipeline_config.ingestion.run
             assert str(config.pipeline_config.ingestion.source_documents_dir) == "test/source"
-            assert config.pipeline_config.summarization.run == True
-            assert config.pipeline_config.chunking.run == True
+            assert config.pipeline_config.summarization.run
+            assert config.pipeline_config.chunking.run
             assert config.pipeline_config.chunking.l_max_tokens == 1024
-            
+
             # Clean up
             os.unlink(f.name)
 
@@ -361,17 +352,17 @@ class TestYourbenchConfig:
             },
         }
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             yaml.dump(yaml_content, f)
             f.flush()
-            
+
             config = YourbenchConfig.from_yaml(f.name)
-            
+
             # Test that missing stages get default configs
-            assert config.pipeline_config.ingestion.run == True
-            assert config.pipeline_config.summarization.run == False  # Default
-            assert config.pipeline_config.chunking.run == False  # Default
-            
+            assert config.pipeline_config.ingestion.run
+            assert not config.pipeline_config.summarization.run  # Default
+            assert not config.pipeline_config.chunking.run  # Default
+
             # Clean up
             os.unlink(f.name)
 
@@ -393,17 +384,17 @@ class TestYourbenchConfig:
             },
         }
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             yaml.dump(yaml_content, f)
             f.flush()
-            
+
             config = YourbenchConfig.from_yaml(f.name)
-            
+
             # Test that stages present in config default to run=True
-            assert config.pipeline_config.ingestion.run == True  # Default for present stage
-            assert config.pipeline_config.summarization.run == True  # Default for present stage
-            assert config.pipeline_config.chunking.run == False  # Explicit false
-            
+            assert config.pipeline_config.ingestion.run  # Default for present stage
+            assert config.pipeline_config.summarization.run  # Default for present stage
+            assert not config.pipeline_config.chunking.run  # Explicit false
+
             # Clean up
             os.unlink(f.name)
 
@@ -423,16 +414,16 @@ class TestYourbenchConfig:
             },
         }
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             yaml.dump(yaml_content, f)
             f.flush()
-            
+
             config = YourbenchConfig.from_yaml(f.name)
-            
+
             # Test that old 'models' key is handled
             assert len(config.model_list) == 1
             assert config.model_list[0].model_name == "test_model"
-            
+
             # Clean up
             os.unlink(f.name)
 
@@ -447,7 +438,7 @@ class TestConfigurationIntegration:
             hf_dataset_name="integration_test",
             private=False,
         )
-        
+
         models = [
             ModelConfig(
                 model_name="test_model_1",
@@ -461,14 +452,14 @@ class TestConfigurationIntegration:
                 max_concurrent_requests=8,
             ),
         ]
-        
+
         model_roles = {
             "ingestion": ["test_model_1"],
             "summarization": ["test_model_2"],
             "single_shot_question_generation": ["test_model_1"],
             "multi_hop_question_generation": ["test_model_2"],
         }
-        
+
         pipeline_config = PipelineConfig(
             ingestion=IngestionConfig(run=True),
             summarization=SummarizationConfig(run=True),
@@ -476,14 +467,14 @@ class TestConfigurationIntegration:
             single_shot_question_generation=SingleShotQuestionGenerationConfig(run=True),
             multi_hop_question_generation=MultiHopQuestionGenerationConfig(run=True),
         )
-        
+
         original_config = YourbenchConfig(
             hf_configuration=hf_config,
             model_list=models,
             model_roles=model_roles,
             pipeline_config=pipeline_config,
         )
-        
+
         # Convert to dict and save as YAML
         config_dict = {
             "hf_configuration": {
@@ -508,11 +499,15 @@ class TestConfigurationIntegration:
                     "run": original_config.pipeline_config.chunking.run,
                     "l_max_tokens": original_config.pipeline_config.chunking.l_max_tokens,
                 },
-                "single_shot_question_generation": {"run": original_config.pipeline_config.single_shot_question_generation.run},
-                "multi_hop_question_generation": {"run": original_config.pipeline_config.multi_hop_question_generation.run},
+                "single_shot_question_generation": {
+                    "run": original_config.pipeline_config.single_shot_question_generation.run
+                },
+                "multi_hop_question_generation": {
+                    "run": original_config.pipeline_config.multi_hop_question_generation.run
+                },
             },
         }
-        
+
         # Clean up None values
         def clean_dict(d):
             if isinstance(d, dict):
@@ -520,32 +515,32 @@ class TestConfigurationIntegration:
             elif isinstance(d, list):
                 return [clean_dict(item) for item in d]
             return d
-        
+
         config_dict = clean_dict(config_dict)
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             yaml.dump(config_dict, f)
             f.flush()
-            
+
             # Load the configuration back
             loaded_config = YourbenchConfig.from_yaml(f.name)
-            
+
             # Verify the loaded configuration matches original
             assert loaded_config.hf_configuration.hf_dataset_name == "integration_test"
-            assert loaded_config.hf_configuration.private == False
-            
+            assert not loaded_config.hf_configuration.private
+
             assert len(loaded_config.model_list) == 2
             assert loaded_config.model_list[0].model_name == "test_model_1"
             assert loaded_config.model_list[1].model_name == "test_model_2"
-            
+
             assert loaded_config.model_roles["ingestion"] == ["test_model_1"]
             assert loaded_config.model_roles["summarization"] == ["test_model_2"]
-            
-            assert loaded_config.pipeline_config.ingestion.run == True
-            assert loaded_config.pipeline_config.summarization.run == True
-            assert loaded_config.pipeline_config.chunking.run == True
+
+            assert loaded_config.pipeline_config.ingestion.run
+            assert loaded_config.pipeline_config.summarization.run
+            assert loaded_config.pipeline_config.chunking.run
             assert loaded_config.pipeline_config.chunking.l_max_tokens == 1024
-            
+
             # Clean up
             os.unlink(f.name)
 
@@ -555,7 +550,7 @@ class TestConfigurationIntegration:
         config = ModelConfig(model_name="test_model", max_concurrent_requests=32)
         assert config.model_name == "test_model"
         assert config.max_concurrent_requests == 32
-        
+
         # Test that invalid types are still created (dataclass doesn't validate types by default)
         # This is expected behavior - type hints are for static analysis
         config2 = ModelConfig(model_name=None, max_concurrent_requests="invalid")

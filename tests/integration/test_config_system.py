@@ -3,12 +3,12 @@
 import os
 import tempfile
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
-import pytest
 import yaml
+import pytest
 
-from yourbench.config_builder import create_yourbench_config, save_config, load_config
+from yourbench.config_builder import load_config, save_config, create_yourbench_config
 from yourbench.utils.configuration_engine import YourbenchConfig
 
 
@@ -19,21 +19,21 @@ class TestConfigurationSystemIntegration:
         """Test creating a simple config and using it in pipeline."""
         with tempfile.TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / "test_config.yaml"
-            
+
             # Create simple configuration
             config = create_yourbench_config(simple=True)
             save_config(config, config_path)
-            
+
             # Verify file exists and is valid YAML
             assert config_path.exists()
             with config_path.open() as f:
                 yaml_data = yaml.safe_load(f)
-            
+
             # Check structure
             assert "hf_configuration" in yaml_data
             assert "model_list" in yaml_data
             assert "pipeline" in yaml_data
-            
+
             # Load back and verify
             loaded_config = load_config(config_path)
             assert isinstance(loaded_config, YourbenchConfig)
@@ -43,7 +43,7 @@ class TestConfigurationSystemIntegration:
         """Test configuration with environment variable expansion."""
         with tempfile.TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / "env_config.yaml"
-            
+
             # Create config with env vars
             config_data = {
                 "hf_configuration": {
@@ -66,19 +66,19 @@ class TestConfigurationSystemIntegration:
                     "chunking": {"run": True},
                 },
             }
-            
+
             with config_path.open("w") as f:
                 yaml.dump(config_data, f)
-            
+
             # Test with environment variables
             test_env = {
                 "HF_TOKEN": "hf_test_token_12345",
                 "HF_ORGANIZATION": "test_org",
             }
-            
+
             with patch.dict(os.environ, test_env):
                 config = load_config(config_path)
-                
+
                 # Verify env var expansion
                 assert config.hf_configuration.hf_token == "hf_test_token_12345"
                 assert config.hf_configuration.hf_organization == "test_org"
@@ -88,7 +88,7 @@ class TestConfigurationSystemIntegration:
         """Test that configuration validation and defaults work correctly."""
         with tempfile.TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / "minimal_config.yaml"
-            
+
             # Create minimal config
             minimal_config = {
                 "hf_configuration": {
@@ -101,37 +101,37 @@ class TestConfigurationSystemIntegration:
                 ],
                 "pipeline": {},  # Empty pipeline should get defaults
             }
-            
+
             with config_path.open("w") as f:
                 yaml.dump(minimal_config, f)
-            
+
             config = load_config(config_path)
-            
+
             # Check defaults are applied
-            assert config.hf_configuration.private == False  # Default
-            assert config.hf_configuration.local_saving == True  # Default
+            assert not config.hf_configuration.private  # Default
+            assert config.hf_configuration.local_saving  # Default
             assert config.model_list[0].max_concurrent_requests == 32  # Default
             assert config.model_list[0].encoding_name == "cl100k_base"  # Default
-            assert config.pipeline_config.ingestion.run == False  # Default when not specified
+            assert not config.pipeline_config.ingestion.run  # Default when not specified
 
     def test_config_roundtrip_preservation(self):
         """Test that config data is preserved through save/load cycles."""
         with tempfile.TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / "roundtrip_config.yaml"
-            
+
             # Create complex configuration
             original_config = create_yourbench_config(simple=True)
             original_config.hf_configuration.private = True
             original_config.hf_configuration.concat_if_exist = True
             original_config.model_list[0].max_concurrent_requests = 24
-            
+
             # Save and load
             save_config(original_config, config_path)
             loaded_config = load_config(config_path)
-            
+
             # Verify preservation
-            assert loaded_config.hf_configuration.private == True
-            assert loaded_config.hf_configuration.concat_if_exist == True
+            assert loaded_config.hf_configuration.private
+            assert loaded_config.hf_configuration.concat_if_exist
             assert loaded_config.model_list[0].max_concurrent_requests == 24
             assert loaded_config.model_list[0].model_name == "Qwen/Qwen3-30B-A3B"
 
@@ -139,7 +139,7 @@ class TestConfigurationSystemIntegration:
         """Test configuration with multiple models and role assignments."""
         with tempfile.TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / "multi_model_config.yaml"
-            
+
             config_data = {
                 "hf_configuration": {
                     "hf_dataset_name": "multi_model_test",
@@ -151,7 +151,7 @@ class TestConfigurationSystemIntegration:
                         "api_key": "$HF_TOKEN",
                     },
                     {
-                        "model_name": "text_model", 
+                        "model_name": "text_model",
                         "base_url": "https://api.openai.com/v1",
                         "api_key": "$OPENAI_API_KEY",
                     },
@@ -167,17 +167,17 @@ class TestConfigurationSystemIntegration:
                     "summarization": {"run": True},
                 },
             }
-            
+
             with config_path.open("w") as f:
                 yaml.dump(config_data, f)
-            
+
             config = load_config(config_path)
-            
+
             # Verify multiple models
             assert len(config.model_list) == 2
             assert config.model_list[0].model_name == "vision_model"
             assert config.model_list[1].model_name == "text_model"
-            
+
             # Verify role assignments
             assert config.model_roles["ingestion"] == ["vision_model"]
             assert config.model_roles["summarization"] == ["text_model"]
@@ -186,7 +186,7 @@ class TestConfigurationSystemIntegration:
         """Test comprehensive pipeline stage configuration."""
         with tempfile.TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / "pipeline_config.yaml"
-            
+
             config_data = {
                 "hf_configuration": {
                     "hf_dataset_name": "pipeline_test",
@@ -239,53 +239,53 @@ class TestConfigurationSystemIntegration:
                     "citation_score_filtering": {"run": True},
                 },
             }
-            
+
             with config_path.open("w") as f:
                 yaml.dump(config_data, f)
-            
+
             config = load_config(config_path)
-            
+
             # Verify ingestion config
-            assert config.pipeline_config.ingestion.run == True
+            assert config.pipeline_config.ingestion.run
             assert str(config.pipeline_config.ingestion.source_documents_dir) == "custom/source"
             assert str(config.pipeline_config.ingestion.output_dir) == "custom/output"
-            assert config.pipeline_config.ingestion.llm_ingestion == True
+            assert config.pipeline_config.ingestion.llm_ingestion
             assert config.pipeline_config.ingestion.pdf_dpi == 600
-            
+
             # Verify summarization config
-            assert config.pipeline_config.summarization.run == True
+            assert config.pipeline_config.summarization.run
             assert config.pipeline_config.summarization.max_tokens == 16384
             assert config.pipeline_config.summarization.token_overlap == 256
-            
+
             # Verify chunking config
-            assert config.pipeline_config.chunking.run == True
+            assert config.pipeline_config.chunking.run
             assert config.pipeline_config.chunking.l_max_tokens == 1024
             assert config.pipeline_config.chunking.h_min == 3
             assert config.pipeline_config.chunking.h_max == 7
             assert config.pipeline_config.chunking.num_multihops_factor == 2
-            
+
             # Verify question generation configs
-            assert config.pipeline_config.single_shot_question_generation.run == True
+            assert config.pipeline_config.single_shot_question_generation.run
             assert config.pipeline_config.single_shot_question_generation.question_mode == "multi-choice"
-            assert config.pipeline_config.multi_hop_question_generation.run == True
+            assert config.pipeline_config.multi_hop_question_generation.run
             assert config.pipeline_config.multi_hop_question_generation.question_mode == "open-ended"
-            
+
             # Verify cross-document config
-            assert config.pipeline_config.cross_document_question_generation.run == True
+            assert config.pipeline_config.cross_document_question_generation.run
             assert config.pipeline_config.cross_document_question_generation.max_combinations == 50
             assert config.pipeline_config.cross_document_question_generation.chunks_per_document == 2
             assert config.pipeline_config.cross_document_question_generation.num_docs_per_combination == [2, 3, 5]
             assert config.pipeline_config.cross_document_question_generation.random_seed == 123
-            
+
             # Verify question rewriting config
-            assert config.pipeline_config.question_rewriting.run == True
+            assert config.pipeline_config.question_rewriting.run
             assert config.pipeline_config.question_rewriting.additional_instructions == "Make questions more engaging"
 
     def test_backward_compatibility(self):
         """Test that old configuration format still works."""
         with tempfile.TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / "legacy_config.yaml"
-            
+
             # Old format with 'models' instead of 'model_list'
             legacy_config = {
                 "hf_configuration": {
@@ -302,12 +302,12 @@ class TestConfigurationSystemIntegration:
                     "ingestion": {"run": True},
                 },
             }
-            
+
             with config_path.open("w") as f:
                 yaml.dump(legacy_config, f)
-            
+
             config = load_config(config_path)
-            
+
             # Verify backward compatibility
             assert len(config.model_list) == 1
             assert config.model_list[0].model_name == "legacy_model"
@@ -317,17 +317,17 @@ class TestConfigurationSystemIntegration:
         """Test error handling for invalid YAML files."""
         with tempfile.TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / "invalid.yaml"
-            
+
             # Create invalid YAML
             config_path.write_text("invalid: yaml: content: [")
-            
+
             with pytest.raises(yaml.YAMLError):
                 load_config(config_path)
 
     def test_error_handling_missing_file(self):
         """Test error handling for missing configuration files."""
         nonexistent_path = Path("/nonexistent/config.yaml")
-        
+
         with pytest.raises(FileNotFoundError):
             load_config(nonexistent_path)
 
@@ -335,7 +335,7 @@ class TestConfigurationSystemIntegration:
         """Test HF_ORGANIZATION fallback to whoami when not set."""
         with tempfile.TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / "hf_fallback_config.yaml"
-            
+
             config_data = {
                 "hf_configuration": {
                     "hf_dataset_name": "fallback_test",
@@ -345,19 +345,19 @@ class TestConfigurationSystemIntegration:
                 "model_list": [{"model_name": "test_model"}],
                 "pipeline": {"ingestion": {"run": True}},
             }
-            
+
             with config_path.open("w") as f:
                 yaml.dump(config_data, f)
-            
+
             # Test with HF_TOKEN but no HF_ORGANIZATION
             test_env = {"HF_TOKEN": "hf_test_token"}
-            
+
             with patch.dict(os.environ, test_env, clear=True):
                 with patch("yourbench.utils.configuration_engine.whoami") as mock_whoami:
                     mock_whoami.return_value = {"name": "fallback_user"}
-                    
+
                     config = load_config(config_path)
-                    
+
                     # Should fallback to whoami result
                     assert config.hf_configuration.hf_organization == "fallback_user"
 
@@ -365,7 +365,7 @@ class TestConfigurationSystemIntegration:
         """Test that Path objects are handled correctly."""
         with tempfile.TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / "path_config.yaml"
-            
+
             config_data = {
                 "hf_configuration": {
                     "hf_dataset_name": "path_test",
@@ -380,17 +380,17 @@ class TestConfigurationSystemIntegration:
                     },
                 },
             }
-            
+
             with config_path.open("w") as f:
                 yaml.dump(config_data, f)
-            
+
             config = load_config(config_path)
-            
+
             # Verify Path objects are created
             assert isinstance(config.hf_configuration.local_dataset_dir, Path)
             assert isinstance(config.pipeline_config.ingestion.source_documents_dir, Path)
             assert isinstance(config.pipeline_config.ingestion.output_dir, Path)
-            
+
             # Verify values
             assert str(config.hf_configuration.local_dataset_dir) == "data/custom_dataset"
             assert str(config.pipeline_config.ingestion.source_documents_dir) == "custom/source/path"
@@ -405,11 +405,11 @@ class TestConfigurationCLIIntegration:
         """Test CLI config creation in simple mode."""
         with tempfile.TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / "cli_simple.yaml"
-            
+
             # This should work without any user input
             config = create_yourbench_config(simple=True)
             save_config(config, config_path)
-            
+
             # Verify the file was created and is valid
             assert config_path.exists()
             loaded_config = load_config(config_path)
@@ -419,14 +419,14 @@ class TestConfigurationCLIIntegration:
         """Test that the main module can load and use configurations."""
         with tempfile.TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / "main_integration.yaml"
-            
+
             # Create a test config
             config = create_yourbench_config(simple=True)
             save_config(config, config_path)
-            
+
             # Import and test the load functionality
             from yourbench.utils.configuration_engine import YourbenchConfig
-            
+
             loaded_config = YourbenchConfig.from_yaml(config_path)
             assert isinstance(loaded_config, YourbenchConfig)
             assert len(loaded_config.model_list) > 0

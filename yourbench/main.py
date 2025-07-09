@@ -13,8 +13,8 @@ from rich.table import Table
 from rich.console import Console
 
 from yourbench.analysis import run_analysis
+from yourbench.config_builder import save_config, create_yourbench_config
 from yourbench.pipeline.handler import run_pipeline
-from yourbench.config_builder import create_yourbench_config, save_config
 
 
 load_dotenv()
@@ -97,21 +97,21 @@ def create(
     try:
         config = create_yourbench_config(simple=simple)
         save_config(config, output)
-        
+
         # Show next steps
         console.print("\n[bold]Next steps:[/bold]")
         if config.pipeline_config.ingestion.run:
             src_dir = config.pipeline_config.ingestion.source_documents_dir
             console.print(f"1. Place your documents in: {src_dir}")
         console.print(f"2. Run: [cyan]yourbench run {output}[/cyan]")
-        
+
         # Remind about .env if API keys were used
         if any(m.api_key and m.api_key.startswith("$") for m in config.model_list):
             console.print("\n[yellow]Don't forget to update your .env file with actual API keys![/yellow]")
-    
+
     except Exception as e:
         logger.error(f"Configuration creation failed: {e}")
-        console.print(f"[red]Error: Could not create configuration[/red]")
+        console.print("[red]Error: Could not create configuration[/red]")
         console.print(f"[red]Details: {e}[/red]")
         raise typer.Exit(1)
 
