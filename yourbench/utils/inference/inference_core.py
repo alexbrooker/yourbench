@@ -16,6 +16,7 @@ from yourbench.utils.inference.inference_tracking import (
     _count_message_tokens,
     _update_aggregate_cost,
 )
+from yourbench.utils.configuration_engine import YourbenchConfig
 
 
 GLOBAL_TIMEOUT = 300
@@ -58,13 +59,13 @@ class InferenceCall:
     seed: Optional[int] = None
 
 
-def _load_models(base_config: Dict[str, Any], step_name: str) -> List[Model]:
+def _load_models(base_config: YourbenchConfig, step_name: str) -> List[Model]:
     """
     Load only the models assigned to this step from the config's 'model_list' and 'model_roles'.
     If no model role is defined for the step, use the first model from model_list.
     """
-    all_configured_models = base_config.get("model_list", [])
-    role_models = base_config.get("model_roles", {}).get(step_name, [])
+    all_configured_models = base_config.model_list
+    role_models = base_config.model_roles.get(step_name, [])
 
     # If no role models are defined for this step, use the first model from model_list
     if not role_models and all_configured_models:
@@ -72,17 +73,33 @@ def _load_models(base_config: Dict[str, Any], step_name: str) -> List[Model]:
         logger.info(
             "No models defined in model_roles for step '{}'. Using the first model from model_list: {}",
             step_name,
-            first_model_config["model_name"],
+            first_model_config.model_name,
         )
         return [
-            Model(**{**first_model_config, "encoding_name": first_model_config.get("encoding_name", "cl100k_base")})
+            Model(
+                model_name=first_model_config.model_name,
+                provider=first_model_config.provider,
+                base_url=first_model_config.base_url,
+                api_key=first_model_config.api_key,
+                bill_to=first_model_config.bill_to,
+                max_concurrent_requests=first_model_config.max_concurrent_requests,
+                encoding_name=first_model_config.encoding_name,
+            )
         ]
 
     # Filter out only those with a matching 'model_name'
     matched = []
     for m_config in all_configured_models:
-        if m_config["model_name"] in role_models:
-            model_instance = Model(**{**m_config, "encoding_name": m_config.get("encoding_name", "cl100k_base")})
+        if m_config.model_name in role_models:
+            model_instance = Model(
+                model_name=m_config.model_name,
+                provider=m_config.provider,
+                base_url=m_config.base_url,
+                api_key=m_config.api_key,
+                bill_to=m_config.bill_to,
+                max_concurrent_requests=m_config.max_concurrent_requests,
+                encoding_name=m_config.encoding_name,
+            )
             matched.append(model_instance)
 
     logger.info(
@@ -278,7 +295,7 @@ async def _run_inference_async_helper(
 
 
 def run_inference(
-    config: Dict[str, Any], step_name: str, inference_calls: List[InferenceCall]
+    config: YourbenchConfig, step_name: str, inference_calls: List[InferenceCall]
 ) -> Dict[str, List[str]]:
     """
     Run inference in parallel for the given step_name and inference_calls.
