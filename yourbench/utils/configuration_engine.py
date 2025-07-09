@@ -5,7 +5,7 @@ Module handles everything related to the configuration of the pipeline.
 import os
 from typing import Any
 from pathlib import Path
-from dataclasses import fields, dataclass
+from dataclasses import fields, dataclass, field
 
 import yaml
 from loguru import logger
@@ -57,15 +57,31 @@ class HuggingFaceConfig:
     def __post_init__(self):
         _expand_dataclass(self)
 
+@dataclass
+class ModelConfig:
+    """Configuration for a model."""
+
+    model_name: str | None = None
+    base_url: str | None = None
+    api_key: str | None = "$HF_TOKEN"
+    max_concurrent_requests: int = 32
+    encoding_name: str = "cl100k_base"
 
 
+    # You can find the list of available providers here: https://huggingface.co/docs/huggingface_hub/guides/inference#supported-providers-and-tasks
+    # huggingface specific
+    provider: str | None = None
+    bill_to: str | None = None
 
+    def __post_init__(self):
+        _expand_dataclass(self)
 
 @dataclass
 class YourbenchConfig:
     """The main configuration class for the YourBench pipeline."""
 
     hf_configuration: HuggingFaceConfig
+    model_list: list[ModelConfig] = field(default_factory=list)
 
     @classmethod
     def from_yaml(cls, path: str | Path) -> "YourbenchConfig":
@@ -77,7 +93,8 @@ class YourbenchConfig:
             data = yaml.safe_load(fh) or {}
 
         hf_kwargs = data.get("hf_configuration", {})
-        return cls(hf_configuration=HuggingFaceConfig(**hf_kwargs))
+        model_list = data.get("model_list", [])
+        return cls(hf_configuration=HuggingFaceConfig(**hf_kwargs), model_list=[ModelConfig(**m) for m in model_list])
 
 
 if __name__ == "__main__":
