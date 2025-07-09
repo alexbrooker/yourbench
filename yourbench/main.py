@@ -11,10 +11,10 @@ import yaml
 import typer
 from dotenv import load_dotenv
 from loguru import logger
+from randomname import get_name as get_random_name
 from rich.table import Table
 from rich.prompt import Prompt, Confirm, IntPrompt, FloatPrompt
 from rich.console import Console
-from randomname import get_name as get_random_name
 
 from yourbench.analysis import run_analysis
 from yourbench.pipeline.handler import run_pipeline
