@@ -195,7 +195,9 @@ def _load_hub(repo_id: str, subset: str | None, token: str | None) -> Dataset:
         raise
 
 
-def _merge_datasets(existing: Dataset | DatasetDict, new: Dataset, subset: str | None, concat_if_exist: bool = False) -> Dataset | DatasetDict:
+def _merge_datasets(
+    existing: Dataset | DatasetDict, new: Dataset, subset: str | None, concat_if_exist: bool = False
+) -> Dataset | DatasetDict:
     """Merge new dataset with existing. If subset exists and concat_if_exist is True, new data is concatenated."""
     if subset is None:
         if isinstance(existing, Dataset):

@@ -1,4 +1,3 @@
-from typing import Any
 
 import tiktoken
 from loguru import logger
@@ -11,8 +10,8 @@ from yourbench.utils.prompts import (
 from yourbench.utils.chunking_utils import split_into_token_chunks
 from yourbench.utils.dataset_engine import custom_load_dataset, custom_save_dataset
 from yourbench.utils.parsing_engine import extract_content_from_xml_tags
-from yourbench.utils.inference.inference_core import InferenceCall, run_inference
 from yourbench.utils.configuration_engine import YourbenchConfig
+from yourbench.utils.inference.inference_core import InferenceCall, run_inference
 
 
 def _build_chunk_calls(

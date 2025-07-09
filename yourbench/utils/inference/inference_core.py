@@ -2,13 +2,14 @@ import os
 import time
 import uuid
 import asyncio
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 from dataclasses import field, dataclass
 
 from loguru import logger
 from tqdm.asyncio import tqdm_asyncio
 
 from huggingface_hub import AsyncInferenceClient
+from yourbench.utils.configuration_engine import YourbenchConfig
 from yourbench.utils.inference.inference_tracking import (
     _count_tokens,
     _get_encoding,
@@ -16,7 +17,6 @@ from yourbench.utils.inference.inference_tracking import (
     _count_message_tokens,
     _update_aggregate_cost,
 )
-from yourbench.utils.configuration_engine import YourbenchConfig
 
 
 GLOBAL_TIMEOUT = 300
