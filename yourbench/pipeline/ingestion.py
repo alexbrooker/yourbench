@@ -1,47 +1,3 @@
-# ingestion.py
-
-"""
-Author: @sumukshashidhar
-
-This module implements the "ingestion" stage of the YourBench pipeline.
-
-Purpose:
-    The ingestion stage reads source documents from a user-specified directory,
-    converts each document into markdown (optionally assisted by an LLM), and
-    saves the converted outputs in the specified output directory. This normalized
-    markdown output sets the foundation for subsequent pipeline steps.
-
-Usage:
-    from yourbench.pipeline import ingestion
-    ingestion.run(config)
-
-Configuration Requirements (in `config["pipeline"]["ingestion"]`):
-    {
-      "run": bool,  # Whether to enable the ingestion stage
-      "source_documents_dir": str,  # Directory containing raw source documents
-      "output_dir": str,           # Directory where converted .md files are saved
-      "upload_to_hub": bool,        # Whether to upload the ingested documents to HF Hub
-      "llm_ingestion": bool,       # Whether to use LLM for PDF ingestion
-      "pdf_dpi": int,              # DPI for PDF to image conversion
-    }
-
-    Additionally, LLM details can be defined in:
-    config["model_roles"]["ingestion"] = [list_of_model_names_for_ingestion]
-    config["model_list"] = [
-      {
-        "model_name": str,
-        "request_style": str,
-        "base_url": str,
-        "api_key": str,
-        ...
-      },
-      ...
-    ]
-
-Stage-Specific Logging:
-    All major ingestion activity is logged to "logs/ingestion.log".
-"""
-
 import io
 import uuid
 import base64
@@ -99,8 +55,7 @@ def run(config: YourbenchConfig) -> None:
 
 def _get_processor(config: YourbenchConfig) -> MarkItDown:
     """Initialize markdown processor with optional LLM support."""
-    model = config.model_list[0]
-
+    model = config.model_list[0] # choose the first model in the list. TODO: add support for model choice.
     if not config.pipeline_config.ingestion.llm_ingestion or not model:
         return MarkItDown()
 
