@@ -45,7 +45,6 @@ Stage-Specific Logging:
 import io
 import uuid
 import base64
-from typing import Any
 from pathlib import Path
 
 import fitz
@@ -57,19 +56,18 @@ from markitdown import MarkItDown
 from datasets import Dataset
 from huggingface_hub import InferenceClient
 from yourbench.utils.dataset_engine import custom_save_dataset
+from yourbench.utils.configuration_engine import YourbenchConfig
 from yourbench.utils.inference.inference_core import (
     InferenceCall,
     _load_models,
     run_inference,
 )
-from yourbench.utils.configuration_engine import YourbenchConfig
 
 
 def run(config: YourbenchConfig) -> None:
     """Convert documents to markdown and optionally upload to Hub."""
     source_dir = config.pipeline_config.ingestion.source_documents_dir
     output_dir = config.pipeline_config.ingestion.output_dir
-
 
     # Process files
     processor = _get_processor(config)
@@ -103,7 +101,7 @@ def _get_processor(config: YourbenchConfig) -> MarkItDown:
     """Initialize markdown processor with optional LLM support."""
     try:
         # Check if model_roles exists as an attribute
-        model_roles = getattr(config, 'model_roles', {}).get("ingestion", [])
+        model_roles = getattr(config, "model_roles", {}).get("ingestion", [])
         model_list = config.model_list
 
         if not model_list:
@@ -113,15 +111,15 @@ def _get_processor(config: YourbenchConfig) -> MarkItDown:
         return MarkItDown()
 
     # Find matching model or use first one
-    model = next(
-        (m for m in model_list if m.model_name in model_roles), model_list[0] if not model_roles else None
-    )
+    model = next((m for m in model_list if m.model_name in model_roles), model_list[0] if not model_roles else None)
 
     if not model:
         return MarkItDown()
 
     try:
-        client = InferenceClient(base_url=model.base_url, api_key=model.api_key, provider=getattr(model, 'provider', None))
+        client = InferenceClient(
+            base_url=model.base_url, api_key=model.api_key, provider=getattr(model, "provider", None)
+        )
         logger.debug(f"Using LLM: {model.model_name}")
         return MarkItDown(llm_client=client, llm_model=model.model_name)
     except Exception as e:
@@ -163,7 +161,7 @@ def _convert_file(file_path: Path, config: YourbenchConfig, processor: MarkItDow
             # Fallback to MarkItDown
             return processor.convert(str(file_path)).text_content
 
-        case ".pdf" if getattr(config.pipeline_config.ingestion, 'llm_ingestion', False):
+        case ".pdf" if getattr(config.pipeline_config.ingestion, "llm_ingestion", False):
             return _process_pdf_llm(file_path, config)
 
         case _:
@@ -191,7 +189,7 @@ def _process_pdf_llm(pdf_path: Path, config: YourbenchConfig) -> str:
             logger.error(f"Fallback conversion failed for {pdf_path.name}: {exc}")
             return ""
 
-    dpi = getattr(config.pipeline_config.ingestion, 'pdf_dpi', 300)
+    dpi = getattr(config.pipeline_config.ingestion, "pdf_dpi", 300)
     images = _pdf_to_images(pdf_path, dpi)
     if not images:
         return ""

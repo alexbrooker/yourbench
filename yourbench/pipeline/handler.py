@@ -1,17 +1,19 @@
 """Pipeline orchestrator for Yourbench."""
+
 import time
 import importlib
 from functools import cache
 
 from loguru import logger
-from yourbench.pipeline.question_generation import run_multi_hop, run_single_shot
+
 from yourbench.utils.dataset_engine import upload_dataset_card
 from yourbench.utils.configuration_engine import YourbenchConfig
+from yourbench.pipeline.question_generation import run_multi_hop, run_single_shot
 
 
 STAGE_ORDER = [
     "ingestion",
-    "summarization", 
+    "summarization",
     "chunking",
     "single_shot_question_generation",
     "multi_hop_question_generation",
@@ -37,7 +39,7 @@ def get_stage_function(stage: str):
 def run_stage(stage: str, config: YourbenchConfig) -> float:
     logger.info(f"Running {stage}")
     start = time.perf_counter()
-    
+
     try:
         get_stage_function(stage)(config)
         return time.perf_counter() - start
@@ -50,28 +52,28 @@ def run_pipeline(config_file_path: str, debug: bool = False, **kwargs) -> None:
     config = YourbenchConfig.from_yaml(config_file_path)
     config.debug = debug
     pipeline = config.pipeline_config
-    
+
     if not pipeline:
         logger.warning("No pipeline stages configured")
         return
-    
+
     for stage in STAGE_ORDER:
         if not hasattr(pipeline, stage):
             logger.warning(f"Stage '{stage}' not configured in pipeline")
             continue
-            
+
         stage_config = getattr(pipeline, stage)
         if not stage_config.run:
             logger.info(f"Skipping {stage} (disabled)")
             continue
-            
+
         elapsed = run_stage(stage, config)
         logger.success(f"Completed {stage} in {elapsed:.3f}s")
-    
+
     # Remove the problematic extra stages check since we're dealing with a dataclass
     # if extra := set(pipeline) - set(STAGE_ORDER):
     #     logger.warning(f"Unrecognized stages: {extra}")
-    
+
     try:
         upload_dataset_card(config)
     except Exception as e:
