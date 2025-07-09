@@ -135,6 +135,18 @@ class SummarizationConfig:
     max_tokens: int = 32768
     token_overlap: int = 512
     encoding_name: str = "cl100k_base"
+    summarization_user_prompt: str | Path = Path("yourbench/prompts/summarization/summarization_user_prompt.md")
+    combine_summaries_user_prompt: str | Path = Path("yourbench/prompts/summarization/combine_summaries_user_prompt.md")
+
+    def __post_init__(self):
+        # Load prompt files if they exist
+        summarization_prompt_path = Path(self.summarization_user_prompt)
+        if summarization_prompt_path.is_file():
+            self.summarization_user_prompt = summarization_prompt_path.read_text(encoding="utf-8").strip()
+
+        combine_prompt_path = Path(self.combine_summaries_user_prompt)
+        if combine_prompt_path.is_file():
+            self.combine_summaries_user_prompt = combine_prompt_path.read_text(encoding="utf-8").strip()
 
 
 @dataclass
