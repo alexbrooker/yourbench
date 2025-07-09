@@ -30,6 +30,12 @@ def _chunk_text(text: str, doc_id: str, max_tokens: int) -> list[dict]:
 
 def _sample_multihop_combinations(n_chunks: int, h_min: int, h_max: int, factor: int, doc_id: str) -> list[list[int]]:
     """Generate random multi-hop chunk combinations."""
+    
+    # If we have only 1 chunk, create a single-chunk combination for cross-document use
+    if n_chunks == 1:
+        return [[0]]
+    
+    # Original logic for multiple chunks per document
     if n_chunks < h_min or h_min > h_max or h_min <= 0:
         return []
 
@@ -51,6 +57,8 @@ def _sample_multihop_combinations(n_chunks: int, h_min: int, h_max: int, factor:
         for _ in range(n_combos):
             if len(all_indices) >= size:
                 combo = sorted(rng.choice(all_indices, size=size, replace=False))
+                # Convert numpy int64 to regular int to avoid serialization issues
+                combo = [int(x) for x in combo]
                 combinations_list.append(combo)
 
     # Deduplicate
@@ -62,7 +70,8 @@ def _sample_multihop_combinations(n_chunks: int, h_min: int, h_max: int, factor:
             seen.add(key)
             unique_combos.append(combo)
 
-    return unique_combos[:target_count]
+    result = unique_combos[:target_count]
+    return result
 
 
 def _process_document(row: dict, cfg) -> tuple[list[dict], list[dict]]:

@@ -228,6 +228,37 @@ class MultiHopQuestionGenerationConfig:
 
 
 @dataclass
+class CrossDocumentQuestionGenerationConfig:
+    """Configuration for the cross-document question generation stage"""
+
+    run: bool = False
+    question_mode: str = "open-ended"  # "open-ended" or "multi-choice"
+    multi_hop_system_prompt: str | Path = Path("yourbench/prompts/question_generation/multi_hop_system_prompt.md")
+    multi_hop_system_prompt_multi: str | Path = Path(
+        "yourbench/prompts/question_generation/multi_hop_system_prompt_multi.md"
+    )
+    multi_hop_user_prompt: str | Path = Path("yourbench/prompts/question_generation/multi_hop_user_prompt.md")
+    max_combinations: int = 100
+    chunks_per_document: int = 1
+    num_docs_per_combination: list[int] = field(default_factory=lambda: [2, 5])
+    random_seed: int = 42
+
+    def __post_init__(self):
+        # Load prompt files if they exist
+        multi_hop_system_prompt_path = Path(self.multi_hop_system_prompt)
+        if multi_hop_system_prompt_path.is_file():
+            self.multi_hop_system_prompt = multi_hop_system_prompt_path.read_text(encoding="utf-8").strip()
+
+        multi_hop_system_prompt_multi_path = Path(self.multi_hop_system_prompt_multi)
+        if multi_hop_system_prompt_multi_path.is_file():
+            self.multi_hop_system_prompt_multi = multi_hop_system_prompt_multi_path.read_text(encoding="utf-8").strip()
+
+        multi_hop_user_prompt_path = Path(self.multi_hop_user_prompt)
+        if multi_hop_user_prompt_path.is_file():
+            self.multi_hop_user_prompt = multi_hop_user_prompt_path.read_text(encoding="utf-8").strip()
+
+
+@dataclass
 class QuestionRewritingConfig:
     """Configuration for the question rewriting stage"""
 
@@ -281,8 +312,12 @@ class PipelineConfig:
     multi_hop_question_generation: MultiHopQuestionGenerationConfig = field(
         default_factory=MultiHopQuestionGenerationConfig
     )
+    cross_document_question_generation: CrossDocumentQuestionGenerationConfig = field(
+        default_factory=CrossDocumentQuestionGenerationConfig
+    )
     question_rewriting: QuestionRewritingConfig = field(default_factory=QuestionRewritingConfig)
     lighteval: LightevalConfig = field(default_factory=LightevalConfig)
+    prepare_lighteval: LightevalConfig = field(default_factory=LightevalConfig)
     citation_score_filtering: CitationScoreFilteringConfig = field(default_factory=CitationScoreFilteringConfig)
 
 
@@ -314,8 +349,10 @@ class YourbenchConfig:
             "question_generation",
             "single_shot_question_generation",
             "multi_hop_question_generation",
+            "cross_document_question_generation",
             "question_rewriting",
             "lighteval",
+            "prepare_lighteval",
             "citation_score_filtering",
         ]
 
@@ -351,8 +388,10 @@ class YourbenchConfig:
             "question_generation": QuestionGenerationConfig,
             "single_shot_question_generation": SingleShotQuestionGenerationConfig,
             "multi_hop_question_generation": MultiHopQuestionGenerationConfig,
+            "cross_document_question_generation": CrossDocumentQuestionGenerationConfig,
             "question_rewriting": QuestionRewritingConfig,
             "lighteval": LightevalConfig,
+            "prepare_lighteval": LightevalConfig,
             "citation_score_filtering": CitationScoreFilteringConfig,
         }
 

@@ -75,10 +75,7 @@ def run(config: YourbenchConfig) -> None:
     Returns:
         None. The merged dataset is saved to disk or HF Hub as configured.
     """
-    stage_cfg = config.pipeline_config.lighteval
-    if not stage_cfg.run:
-        logger.info("lighteval stage is disabled. Skipping.")
-        return
+    stage_cfg = config.pipeline_config.prepare_lighteval
 
     logger.info("Saving lighteval compatible dataset")
 
@@ -88,7 +85,7 @@ def run(config: YourbenchConfig) -> None:
     cross_doc_subset = getattr(stage_cfg, "cross_doc_subset", "cross_document_questions")
     chunked_subset = getattr(stage_cfg, "chunked_subset", "chunked")
     summarized_subset = getattr(stage_cfg, "summarized_subset", "summarized")
-    output_subset = getattr(stage_cfg, "output_subset", "lighteval")
+    output_subset = getattr(stage_cfg, "output_subset", "prepared_lighteval")
 
     # Load datasets
     try:
@@ -245,7 +242,7 @@ def run(config: YourbenchConfig) -> None:
         if not gold:
             logger.warning("Row has empty answer line")
 
-        stage_cfg_local = config.pipeline_config.multi_hop_question_generation
+        stage_cfg_local = config.pipeline_config.cross_document_question_generation
         gold = (
             [ord(gold) - ord("A")]
             if getattr(stage_cfg_local, "question_mode", None) == "multi-choice" and gold
@@ -293,4 +290,4 @@ def run(config: YourbenchConfig) -> None:
 
     # Save dataset
     custom_save_dataset(dataset=final_ds, config=config, subset=output_subset)
-    logger.success("Lighteval dataset saved successfully.")
+    logger.success("Prepared Lighteval dataset saved successfully.")

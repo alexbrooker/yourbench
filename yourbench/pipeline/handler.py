@@ -8,7 +8,7 @@ from loguru import logger
 
 from yourbench.utils.dataset_engine import upload_dataset_card
 from yourbench.utils.configuration_engine import YourbenchConfig
-from yourbench.pipeline.question_generation import run_multi_hop, run_single_shot
+from yourbench.pipeline.question_generation import run_multi_hop, run_single_shot, run_cross_document
 
 
 STAGE_ORDER = [
@@ -17,14 +17,16 @@ STAGE_ORDER = [
     "chunking",
     "single_shot_question_generation",
     "multi_hop_question_generation",
+    "cross_document_question_generation",
     "question_rewriting",
-    "lighteval",
+    "prepare_lighteval",
     "citation_score_filtering",
 ]
 
 STAGE_OVERRIDES = {
     "single_shot_question_generation": run_single_shot,
     "multi_hop_question_generation": run_multi_hop,
+    "cross_document_question_generation": run_cross_document,
 }
 
 
