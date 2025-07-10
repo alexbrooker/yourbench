@@ -184,6 +184,7 @@ class SingleShotQuestionGenerationConfig:
         "yourbench/prompts/question_generation/single_shot_system_prompt_multi.md"
     )
     single_shot_user_prompt: str | Path = Path("yourbench/prompts/question_generation/single_shot_user_prompt.md")
+    additional_instructions: str = ""
 
     def __post_init__(self) -> None:
         # Load prompt files if they exist
@@ -213,6 +214,7 @@ class MultiHopQuestionGenerationConfig:
         "yourbench/prompts/question_generation/multi_hop_system_prompt_multi.md"
     )
     multi_hop_user_prompt: str | Path = Path("yourbench/prompts/question_generation/multi_hop_user_prompt.md")
+    additional_instructions: str = ""
 
     def __post_init__(self) -> None:
         # Load prompt files if they exist
@@ -240,6 +242,7 @@ class CrossDocumentQuestionGenerationConfig:
         "yourbench/prompts/question_generation/multi_hop_system_prompt_multi.md"
     )
     multi_hop_user_prompt: str | Path = Path("yourbench/prompts/question_generation/multi_hop_user_prompt.md")
+    additional_instructions: str = ""
     max_combinations: int = 100
     chunks_per_document: int = 1
     num_docs_per_combination: list[int] = field(default_factory=lambda: [2, 5])
@@ -353,7 +356,6 @@ class YourbenchConfig:
             "multi_hop_question_generation",
             "cross_document_question_generation",
             "question_rewriting",
-            "lighteval",
             "prepare_lighteval",
             "citation_score_filtering",
         ]
