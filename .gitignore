@@ -6,7 +6,8 @@ logs/
 log_backups/
 plots/
 files/
-data/
+data/processed/
+data/saved_dataset
 .gradio/
 example/data/processed/
 # C extensions
