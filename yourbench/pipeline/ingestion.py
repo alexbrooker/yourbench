@@ -2,7 +2,6 @@ import io
 import uuid
 import base64
 from pathlib import Path
-from dataclasses import asdict
 
 import fitz
 import trafilatura
@@ -112,8 +111,7 @@ def _extract_html(path: Path) -> str | None:
 
 def _process_pdf_llm(pdf_path: Path, config: YourbenchConfig) -> str | None:
     """Convert every page of a PDF to Markdown using an LLM."""
-    config_dict = asdict(config)
-    models = _load_models(config_dict, "ingestion")
+    models = _load_models(config, "ingestion")
     ingestion_config = config.pipeline_config.ingestion
 
     if not models:
@@ -146,7 +144,7 @@ def _process_pdf_llm(pdf_path: Path, config: YourbenchConfig) -> str | None:
     ]
 
     pages: list[str] = []
-    responses = run_inference(config_dict, "ingestion", calls)
+    responses = run_inference(config, "ingestion", calls)
     if not responses:
         logger.error(f"LLM inference failed for all models on {pdf_path.name}")
         return None
