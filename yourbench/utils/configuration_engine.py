@@ -89,8 +89,8 @@ class IngestionConfig:
     """Configuration for the ingestion stage"""
 
     run: bool = False
-    source_documents_dir: Path | None = Path("example/data/raw")
-    output_dir: Path | None = Path("data/processed")
+    source_documents_dir: Path | None = Path("example/data/raw/simple_example")
+    output_dir: Path | None = Path("data/processed/simple_example")
     upload_to_hub: bool = True
     llm_ingestion: bool = False
     pdf_dpi: int = 300

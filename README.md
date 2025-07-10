@@ -25,9 +25,8 @@
 
 ---
 
-> **YourBench** is an open-source framework for generating domain-specific benchmarks in a zero-shot manner. It aims to keep your large language models on their toes – even as new data sources, domains, and knowledge demands evolve.
+Yourbench is a structured data generation library for building better AI systems. Generate high-quality QA pairs, training data, and evaluation datasets from any source documents with full control over the output format and complexity. The modular architecture lets you configure every aspect of the generation pipeline, from document parsing (with built-in converters for common formats to markdown) to chunking strategies to output schemas. Most eval frameworks force you into their structure; Yourbench adapts to yours. Use it to create domain-specific benchmarks, fine-tuning datasets, or systematic model evaluations. Peer-reviewed and appearing at COLM 2025.
 
-YourBench tackles a critical evaluation gap for LLMs. Traditional static benchmarks are quickly **saturated** or contaminated by training data, making it hard to assess models on new knowledge. Domain-specific or up-to-date evaluation is often costly and slow with human annotation. **YourBench addresses this by enabling dynamic, automated generation of reliable, domain-tailored benchmarks directly from your data, without manual labeling**. In a recent study, YourBench replicated several subsets of a popular benchmark (MMLU) using minimal source text for **under \$15** in total cost, while preserving the original ranking of model performance (Spearman ρ = 1). By grounding questions in user-provided documents, YourBench ensures evaluations stay relevant and **truly test a model’s knowledge on content it hasn’t seen before**.
 
 ## Installation
 
@@ -37,13 +36,15 @@ YourBench is available on PyPI and requires **Python 3.12+**. You can install it
 
   ```bash
   # uv (recommended; get it here: https://docs.astral.sh/uv/getting-started/installation/)
+  uv venv --python 3.12
+  source .venv/bin/activate
   uv pip install yourbench
 
   # pip (standard support)
   pip install yourbench
   ```
 
-  This will install the latest published version (e.g. `0.3.1`).
+  This will install the latest published version (e.g. `0.4.0`).
 
 * **Install from source (development version):**
 
@@ -52,7 +53,7 @@ YourBench is available on PyPI and requires **Python 3.12+**. You can install it
   cd yourbench
   
   # uv, recommended
-  uv venv
+  uv venv --python 3.12
   source .venv/bin/activate
   uv pip install -e .
 
