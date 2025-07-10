@@ -1,6 +1,7 @@
 hf_configuration:
   hf_dataset_name: yourbench_example_v3
-  private: true
+  hf_organization: yourbench
+  private: false
 
 model_list:
   - model_name: Qwen/Qwen3-30B-A3B
@@ -12,8 +13,5 @@ pipeline:
   single_shot_question_generation:
   multi_hop_question_generation:
   cross_document_question_generation:
-    max_combinations: 10
-    chunks_per_document: 1
-    num_docs_per_combination: [2, 3]
   prepare_lighteval:
   citation_score_filtering:
