@@ -1,11 +1,9 @@
 hf_configuration:
-  hf_dataset_name: yourbench_example_v2
+  hf_dataset_name: yourbench_example_v3
   private: true
 
 model_list:
-  - model_name: mistralai/Magistral-Small-2506
-    base_url: http://stargate:8000/v1
-    api_key: $OPENROUTER_API_KEY
+  - model_name: Qwen/Qwen3-30B-A3B
 
 pipeline:
   ingestion:
