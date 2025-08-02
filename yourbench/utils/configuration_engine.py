@@ -280,6 +280,14 @@ class IngestionConfig(BaseModel):
         return self
 
 
+class UploadIngestToHubConfig(BaseModel):
+    """Configuration for the upload_ingest_to_hub stage."""
+
+    model_config = ConfigDict(validate_assignment=True)
+
+    run: bool = False
+
+
 class SummarizationConfig(BaseModel):
     """Configuration for the summarization stage."""
 
@@ -554,6 +562,7 @@ class PipelineConfig(BaseModel):
     # Define pipeline stages in execution order
     STAGE_ORDER: ClassVar[list[str]] = [
         "ingestion",
+        "upload_ingest_to_hub",
         "summarization",
         "chunking",
         "question_generation",
@@ -567,6 +576,7 @@ class PipelineConfig(BaseModel):
     ]
 
     ingestion: IngestionConfig = Field(default_factory=IngestionConfig)
+    upload_ingest_to_hub: UploadIngestToHubConfig = Field(default_factory=UploadIngestToHubConfig)
     summarization: SummarizationConfig = Field(default_factory=SummarizationConfig)
     chunking: ChunkingConfig = Field(default_factory=ChunkingConfig)
     question_generation: QuestionGenerationConfig = Field(default_factory=QuestionGenerationConfig)
