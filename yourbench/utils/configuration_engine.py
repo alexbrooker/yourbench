@@ -351,9 +351,22 @@ class ChunkingConfig(BaseModel):
     model_config = ConfigDict(validate_assignment=True)
 
     run: bool = False
+    
+    # Chunking mode configuration
+    chunking_mode: str = Field(default="token", pattern="^(token|sentence)$")
+    
+    # Token-based chunking settings
     l_max_tokens: int = Field(default=8192, ge=256, le=50000)
     token_overlap: int = Field(default=512, ge=0)
     encoding_name: str = "cl100k_base"
+    
+    # Sentence-based chunking settings
+    max_sentences_per_chunk: int = Field(default=10, ge=1, le=100)
+    sentence_overlap: int = Field(default=2, ge=0)
+    sentence_delimiters: str = Field(default=r"[.!?]")
+    min_chunk_length: int = Field(default=100, ge=10)
+    
+    # Multi-hop configuration
     h_min: int = Field(default=2, ge=1)
     h_max: int = Field(default=5, ge=1)
     num_multihops_factor: int = Field(default=1, ge=1)

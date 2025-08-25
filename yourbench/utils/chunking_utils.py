@@ -1,3 +1,4 @@
+import re
 import random
 from typing import Any, Callable, Optional
 from dataclasses import dataclass
@@ -104,3 +105,86 @@ def sample_multihop_groups(
         k = min(int(value), total)
         return safe_sample(mh_chunks, k)
     return mh_chunks
+
+
+def split_into_sentences(text: str, delimiters: str = r"[.!?]") -> list[str]:
+    """
+    Split text into sentences using customizable delimiters.
+    
+    Args:
+        text (str): The input text to split
+        delimiters (str): Regex pattern for sentence delimiters (default: "[.!?]")
+                         For Chinese: "[。！？]"
+                         For mixed: "[.!?。！？]"
+    
+    Returns:
+        list[str]: List of sentences
+    """
+    if not text or not text.strip():
+        return []
+    
+    # Normalize text - replace newlines with spaces
+    normalized_text = text.replace("\n", " ").strip()
+    
+    # Split using capturing parentheses to retain delimiters
+    pattern = f"({delimiters})"
+    segments = re.split(pattern, normalized_text)
+    
+    sentences = []
+    for i in range(0, len(segments), 2):
+        if i + 1 < len(segments):
+            # Combine text and delimiter
+            sentence = (segments[i] + segments[i + 1]).strip()
+        else:
+            # Last segment without delimiter
+            sentence = segments[i].strip()
+        
+        if sentence:
+            sentences.append(sentence)
+    
+    return sentences
+
+
+def split_into_sentence_chunks(
+    text: str,
+    max_sentences: int = 10,
+    overlap_sentences: int = 2,
+    delimiters: str = r"[.!?]",
+    min_chunk_length: int = 100,
+) -> list[str]:
+    """
+    Split text into chunks based on sentences with customizable delimiters.
+    
+    Args:
+        text (str): The input text
+        max_sentences (int): Maximum sentences per chunk
+        overlap_sentences (int): Number of overlapping sentences between chunks
+        delimiters (str): Regex pattern for sentence delimiters
+        min_chunk_length (int): Minimum character length for a chunk
+    
+    Returns:
+        list[str]: List of text chunks
+    """
+    sentences = split_into_sentences(text, delimiters)
+    
+    if not sentences:
+        return []
+    
+    if len(sentences) <= max_sentences:
+        return [" ".join(sentences)]
+    
+    chunks = []
+    stride = max(1, max_sentences - overlap_sentences)
+    
+    for i in range(0, len(sentences), stride):
+        chunk_sentences = sentences[i : i + max_sentences]
+        chunk_text = " ".join(chunk_sentences)
+        
+        # Only add chunks that meet minimum length requirement
+        if len(chunk_text) >= min_chunk_length:
+            chunks.append(chunk_text)
+        elif chunks:
+            # Merge short chunk with previous one
+            chunks[-1] = chunks[-1] + " " + chunk_text
+    
+    return chunks

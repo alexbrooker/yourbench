@@ -7,7 +7,7 @@ import numpy as np
 from loguru import logger
 from tqdm.auto import tqdm
 
-from yourbench.utils.chunking_utils import split_into_token_chunks
+from yourbench.utils.chunking_utils import split_into_token_chunks, split_into_sentence_chunks
 from yourbench.utils.dataset_engine import custom_load_dataset, custom_save_dataset
 from yourbench.utils.configuration_engine import YourbenchConfig
 
@@ -19,12 +19,22 @@ def _get_rng(seed: str) -> np.random.Generator:
     return np.random.default_rng(seed_int)
 
 
-def _chunk_text(text: str, doc_id: str, max_tokens: int) -> list[dict]:
-    """Split text into token-based chunks."""
+def _chunk_text(text: str, doc_id: str, cfg) -> list[dict]:
+    """Split text into chunks based on configuration."""
     if not text.strip():
         return []
 
-    chunks = split_into_token_chunks(text, max_tokens, overlap=0)
+    if cfg.chunking_mode == "sentence":
+        chunks = split_into_sentence_chunks(
+            text,
+            max_sentences=cfg.max_sentences_per_chunk,
+            overlap_sentences=cfg.sentence_overlap,
+            delimiters=cfg.sentence_delimiters,
+            min_chunk_length=cfg.min_chunk_length,
+        )
+    else:
+        chunks = split_into_token_chunks(text, cfg.l_max_tokens, overlap=0)
+    
     return [{"chunk_id": f"{doc_id}_{i}", "chunk_text": chunk} for i, chunk in enumerate(chunks)]
 
 
@@ -80,7 +90,7 @@ def _process_document(row: dict, cfg) -> tuple[list[dict], list[dict]]:
     doc_id = row.get("document_id", f"doc_{hash(doc_text) % 10000}")
 
     # Create single-hop chunks
-    chunks = _chunk_text(doc_text, doc_id, cfg.l_max_tokens)
+    chunks = _chunk_text(doc_text, doc_id, cfg)
     if not chunks:
         return [], []
 

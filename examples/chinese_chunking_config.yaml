@@ -1,0 +1,41 @@
+# Example configuration for Chinese language text chunking
+# This demonstrates how to use customizable sentence delimiters for multilingual support
+
+dataset_config:
+  dataset_name: "my-chinese-dataset"
+  output_dir: "./output"
+  save_intermediate_data: true
+
+pipeline_config:
+  chunking:
+    run: true
+    
+    # Use sentence-based chunking instead of token-based
+    chunking_mode: "sentence"  # Options: "token" or "sentence"
+    
+    # Sentence-based chunking configuration
+    max_sentences_per_chunk: 10
+    sentence_overlap: 2
+    
+    # Chinese sentence delimiters
+    # \u3002 = Chinese full stop (。)
+    # \uff01 = Chinese exclamation mark (！)
+    # \uff1f = Chinese question mark (？)
+    sentence_delimiters: "[\u3002\uff01\uff1f]"
+    
+    # For mixed Chinese-English text, you can use:
+    # sentence_delimiters: "[.!?\u3002\uff01\uff1f]"
+    
+    min_chunk_length: 100
+    
+    # Multi-hop configuration
+    h_min: 2
+    h_max: 5
+    num_multihops_factor: 1
+    
+    # Token-based settings (ignored when chunking_mode is "sentence")
+    l_max_tokens: 8192
+    token_overlap: 512
+    encoding_name: "cl100k_base"
+
+# Other pipeline stages...
