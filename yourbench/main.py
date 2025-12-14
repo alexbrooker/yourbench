@@ -9,10 +9,30 @@ import typer
 from dotenv import load_dotenv
 from loguru import logger
 
+# Configure loguru with clean, simple format
+logger.remove()  # Remove default handler
 
-# Configure logging
-logger.remove()
-logger.add(sys.stderr, level=os.getenv("YOURBENCH_LOG_LEVEL", "INFO"))
+# Simple, clean format without emojis or icons
+LOG_LEVEL = os.getenv("YOURBENCH_LOG_LEVEL", "INFO")
+LOG_FORMAT = "[{time:HH:mm:ss}] [{level:5}] {message}"
+
+# Add console handler
+logger.add(
+    sys.stderr, 
+    format=LOG_FORMAT,
+    level=LOG_LEVEL,
+    colorize=True
+)
+
+# Add file handler if requested
+if log_file := os.getenv("YOURBENCH_LOG_FILE"):
+    logger.add(
+        log_file,
+        format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level:8} | {name}:{function}:{line} - {message}",
+        level="DEBUG",
+        rotation="100 MB",
+        retention="7 days"
+    )
 
 load_dotenv()
 
