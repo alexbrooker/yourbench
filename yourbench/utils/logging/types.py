@@ -3,13 +3,14 @@ Type definitions for the YourBench logging system.
 
 This module provides type definitions for type safety and better IDE support.
 """
-from typing import Dict, Any, Optional, Union, TypedDict, Literal, Protocol
-from datetime import datetime
+
 from enum import Enum
+from typing import Any, Dict, Optional, Protocol, TypedDict
 
 
 class LogLevel(str, Enum):
     """Log severity levels."""
+
     TRACE = "TRACE"
     DEBUG = "DEBUG"
     INFO = "INFO"
@@ -21,6 +22,7 @@ class LogLevel(str, Enum):
 
 class StageStatus(str, Enum):
     """Pipeline stage execution status."""
+
     NOT_STARTED = "NOT_STARTED"
     STARTING = "STARTING"
     IN_PROGRESS = "IN_PROGRESS"
@@ -31,6 +33,7 @@ class StageStatus(str, Enum):
 
 class MetricsDict(TypedDict, total=False):
     """Type definition for stage metrics."""
+
     duration_seconds: float
     items_processed: int
     items_failed: int
@@ -43,6 +46,7 @@ class MetricsDict(TypedDict, total=False):
 
 class LogRecord(TypedDict):
     """Structure of a log record."""
+
     timestamp: str
     level: str
     message: str
@@ -56,7 +60,7 @@ class LogRecord(TypedDict):
 
 class LogFormatter(Protocol):
     """Protocol for log formatters."""
-    
+
     def format(self, record: LogRecord) -> str:
         """Format a log record into a string."""
         ...
@@ -64,15 +68,15 @@ class LogFormatter(Protocol):
 
 class LogHandler(Protocol):
     """Protocol for log handlers."""
-    
+
     def emit(self, record: LogRecord) -> None:
         """Emit a log record."""
         ...
-    
+
     def flush(self) -> None:
         """Flush any buffered records."""
         ...
-    
+
     def close(self) -> None:
         """Clean up handler resources."""
         ...
@@ -80,7 +84,7 @@ class LogHandler(Protocol):
 
 class ProgressCallback(Protocol):
     """Protocol for progress reporting callbacks."""
-    
+
     def __call__(self, message: str, **kwargs: Any) -> None:
         """Report progress."""
         ...

@@ -4,18 +4,20 @@ Thread-safe context management using contextvars.
 Provides context-aware logging that supports async operations and prevents
 state leakage between concurrent executions.
 """
-import uuid
-from contextvars import ContextVar
-from typing import Optional, Dict, Any
-from dataclasses import dataclass, field
-from datetime import datetime
 
-from .types import StageStatus, MetricsDict
+import uuid
+from typing import Any, Dict, Optional
+from datetime import datetime
+from contextvars import ContextVar
+from dataclasses import field, dataclass
+
+from .types import MetricsDict, StageStatus
 
 
 @dataclass
 class LoggingContext:
     """Thread-local context for logging."""
+
     run_id: str = field(default_factory=lambda: str(uuid.uuid4()))
     stage: Optional[str] = None
     stage_status: StageStatus = StageStatus.NOT_STARTED
@@ -24,7 +26,7 @@ class LoggingContext:
     extra: Dict[str, Any] = field(default_factory=dict)
     metrics: MetricsDict = field(default_factory=dict)
     progress: list[str] = field(default_factory=list)
-    
+
     def reset_stage(self) -> None:
         """Reset stage-specific context."""
         self.stage = None
@@ -32,7 +34,7 @@ class LoggingContext:
         self.stage_started_at = None
         self.metrics = {}
         self.progress = []
-    
+
     def start_stage(self, stage_name: str) -> None:
         """Start a new stage."""
         self.stage = stage_name
@@ -40,39 +42,36 @@ class LoggingContext:
         self.stage_started_at = datetime.utcnow()
         self.metrics = {}
         self.progress = []
-    
+
     def update_metrics(self, **kwargs: Any) -> None:
         """Update stage metrics."""
         self.metrics.update(kwargs)
-    
+
     def add_progress(self, message: str) -> None:
         """Add a progress message."""
         self.progress.append(message)
-    
+
     def complete_stage(self) -> MetricsDict:
         """Mark stage as complete and return final metrics."""
         self.stage_status = StageStatus.COMPLETED
         if self.stage_started_at:
             duration = (datetime.utcnow() - self.stage_started_at).total_seconds()
-            self.metrics['duration_seconds'] = duration
+            self.metrics["duration_seconds"] = duration
         return self.metrics.copy()
-    
+
     def fail_stage(self, error: Optional[Exception] = None) -> MetricsDict:
         """Mark stage as failed and return metrics."""
         self.stage_status = StageStatus.FAILED
         if self.stage_started_at:
             duration = (datetime.utcnow() - self.stage_started_at).total_seconds()
-            self.metrics['duration_seconds'] = duration
+            self.metrics["duration_seconds"] = duration
         if error:
-            self.metrics['error_count'] = self.metrics.get('error_count', 0) + 1
+            self.metrics["error_count"] = self.metrics.get("error_count", 0) + 1
         return self.metrics.copy()
 
 
 # Context variable for thread-safe context management
-_logging_context: ContextVar[Optional[LoggingContext]] = ContextVar(
-    'logging_context',
-    default=None
-)
+_logging_context: ContextVar[Optional[LoggingContext]] = ContextVar("logging_context", default=None)
 
 
 def get_context() -> LoggingContext:

@@ -8,16 +8,15 @@ from pathlib import Path
 import typer
 from dotenv import load_dotenv
 
+
 # Use structured logging if available, fallback to loguru
 try:
-    from yourbench.utils.logging import (
-        configure_logging,
-        get_logger,
-        LogLevel
-    )
+    from yourbench.utils.logging import LogLevel, get_logger, configure_logging
+
     STRUCTURED_LOGGING_AVAILABLE = True
 except ImportError:
     from loguru import logger
+
     STRUCTURED_LOGGING_AVAILABLE = False
 
 load_dotenv()
@@ -37,12 +36,12 @@ def setup_logging(debug: bool = False):
         env_level = os.getenv("YOURBENCH_LOG_LEVEL", "").upper()
         if env_level and hasattr(LogLevel, env_level):
             level = LogLevel[env_level]
-        
+
         # Set up structured logging
         configure_logging(
             level=level,
             console=True,
-            file_path=None  # Will use default based on timestamp
+            file_path=None,  # Will use default based on timestamp
         )
         return get_logger()
     else:
@@ -73,8 +72,8 @@ def run(
     logger.info(f"Running with config: {config_file}")
 
     from yourbench.conf.loader import load_config
-    from yourbench.pipeline.handler_updated import run_pipeline_with_config
     from yourbench.utils.dataset_engine import upload_dataset_card
+    from yourbench.pipeline.handler_updated import run_pipeline_with_config
 
     try:
         config = load_config(config_file)
@@ -87,7 +86,7 @@ def run(
             logger.warning(f"Failed to upload dataset card: {e}")
     except Exception as e:
         if STRUCTURED_LOGGING_AVAILABLE:
-            logger.exception(f"Pipeline failed", exc=e)
+            logger.exception("Pipeline failed", exc=e)
         else:
             logger.exception(f"Pipeline failed: {e}")
         raise typer.Exit(1)

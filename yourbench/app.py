@@ -7,11 +7,13 @@ import atexit
 import shutil
 import subprocess
 
+
 # Early startup logging
 # Use structured logging if enabled
 USE_STRUCTURED = os.getenv("YOURBENCH_STRUCTURED_LOGGING", "false").lower() == "true"
 if USE_STRUCTURED:
     from yourbench.utils.logging import get_logger
+
     logger = get_logger()
 else:
     from loguru import logger
