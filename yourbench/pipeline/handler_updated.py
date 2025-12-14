@@ -2,26 +2,22 @@
 
 import os
 import time
-import importlib
 import uuid
+import importlib
 
 from loguru import logger as loguru_logger
+
 from yourbench.conf.loader import get_enabled_stages
 
+
 # Check if structured logging is enabled via environment
-USE_STRUCTURED_LOGGING = os.environ.get('YOURBENCH_STRUCTURED_LOGGING', 'false').lower() == 'true'
+USE_STRUCTURED_LOGGING = os.environ.get("YOURBENCH_STRUCTURED_LOGGING", "false").lower() == "true"
 
 if USE_STRUCTURED_LOGGING:
     try:
-        from yourbench.utils.logging import (
-            get_logger,
-            get_context,
-            get_metrics_collector
-        )
-        from yourbench.utils.logging.integration import (
-            setup_pipeline_logging,
-            redirect_loguru_to_structured
-        )
+        from yourbench.utils.logging import get_logger, get_context, get_metrics_collector
+        from yourbench.utils.logging.integration import setup_pipeline_logging, redirect_loguru_to_structured
+
         STRUCTURED_LOGGING_AVAILABLE = True
     except ImportError:
         STRUCTURED_LOGGING_AVAILABLE = False
@@ -81,22 +77,22 @@ def run_stage(stage: str, config) -> float:
         context = get_context()
         context.start_stage(stage)
         logger.info(f"Starting {stage}")
-        
+
         start = time.perf_counter()
         try:
             _get_stage_function(stage)(config)
             elapsed = time.perf_counter() - start
-            
+
             context.update_metrics(duration_seconds=elapsed)
             metrics = context.complete_stage()
-            logger.success(f"Completed {stage}", extra={'metrics': metrics})
-            
+            logger.success(f"Completed {stage}", extra={"metrics": metrics})
+
             return elapsed
         except Exception as e:
             elapsed = time.perf_counter() - start
             context.update_metrics(duration_seconds=elapsed, error_count=1)
             metrics = context.fail_stage(e)
-            logger.error(f"Failed {stage}", error=e, extra={'metrics': metrics})
+            logger.error(f"Failed {stage}", error=e, extra={"metrics": metrics})
             raise
         finally:
             context.reset_stage()
@@ -145,39 +141,40 @@ def run_pipeline_with_config(config, debug: bool = False) -> None:
 
     elapsed_times = {}
     failed_stage = None
-    
+
     try:
         for stage in enabled:
             elapsed = run_stage(stage, config)
             elapsed_times[stage] = elapsed
             logger.success(f"Completed {stage} in {elapsed:.2f}s")
-    
+
     except Exception as e:
-        failed_stage = stage if 'stage' in locals() else 'unknown'
+        failed_stage = stage if "stage" in locals() else "unknown"
         logger.error(f"Pipeline failed at stage: {failed_stage}")
         raise
-    
+
     finally:
         # Log summary if using structured logging
         if USE_STRUCTURED_LOGGING and STRUCTURED_LOGGING_AVAILABLE:
             total_time = sum(elapsed_times.values())
             collector = get_metrics_collector()
             summary = collector.get_pipeline_summary()
-            
+
             logger.info(
                 f"Pipeline {'completed' if not failed_stage else 'failed'}",
                 extra={
-                    'total_time': total_time,
-                    'stages_completed': len(elapsed_times),
-                    'stages_total': len(enabled),
-                    'failed_stage': failed_stage,
-                    'summary': summary
-                }
+                    "total_time": total_time,
+                    "stages_completed": len(elapsed_times),
+                    "stages_total": len(enabled),
+                    "failed_stage": failed_stage,
+                    "summary": summary,
+                },
             )
 
     # Upload dataset card
     try:
         from yourbench.utils.dataset_engine import upload_dataset_card
+
         upload_dataset_card(config)
     except Exception as e:
         logger.warning(f"Failed to upload dataset card: {e}")

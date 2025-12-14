@@ -478,7 +478,7 @@ def run_inference(config, step_name: str, inference_calls: List[InferenceCall]) 
     # Load relevant models for the pipeline step
     models = _load_models(config, step_name)
     if not models:
-        logger.warning("No models found for step '{}'. Returning empty dictionary.", step_name)
+        logger.warning(f"No models found for step '{step_name}'. Returning empty dictionary.")
         return {}
 
     # Assign the step_name as a tag if not already present (for tracking)
@@ -502,5 +502,5 @@ def run_inference(config, step_name: str, inference_calls: List[InferenceCall]) 
         return result
 
     except Exception as e:
-        logger.critical("Error running inference for step '{}': {}", step_name, e)
+        logger.critical(f"Error running inference for step '{step_name}': {e}")
         return {}

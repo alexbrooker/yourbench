@@ -1,11 +1,13 @@
 from __future__ import annotations
-from typing import Any
 import os
+from typing import Any
+
 
 # Use structured logging if enabled
 USE_STRUCTURED = os.getenv("YOURBENCH_STRUCTURED_LOGGING", "false").lower() == "true"
 if USE_STRUCTURED:
     from yourbench.utils.logging import get_logger
+
     logger = get_logger()
 else:
     from loguru import logger
@@ -16,6 +18,7 @@ else:
     def log_stage(name):
         def decorator(func):
             return func
+
         return decorator
 
 
