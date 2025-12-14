@@ -1,9 +1,25 @@
 """Compute overlap based citation scores for the lighteval dataset."""
 
+import os
 from typing import Sequence
 from dataclasses import dataclass
 
-from loguru import logger
+# Use structured logging if enabled
+USE_STRUCTURED = os.getenv("YOURBENCH_STRUCTURED_LOGGING", "false").lower() == "true"
+if USE_STRUCTURED:
+    from yourbench.utils.logging import get_logger
+    logger = get_logger()
+else:
+    from loguru import logger
+if USE_STRUCTURED:
+    from yourbench.utils.logging import log_stage
+else:
+    # Create dummy decorator if not using structured logging
+    def log_stage(name):
+        def decorator(func):
+            return func
+        return decorator
+
 from thefuzz import fuzz
 
 from yourbench.utils.dataset_engine import custom_load_dataset, custom_save_dataset, replace_dataset_columns

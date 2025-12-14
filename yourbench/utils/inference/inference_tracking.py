@@ -7,7 +7,13 @@ from typing import Dict, List
 from dataclasses import dataclass
 
 import tiktoken
-from loguru import logger
+# Use structured logging if enabled
+USE_STRUCTURED = os.getenv("YOURBENCH_STRUCTURED_LOGGING", "false").lower() == "true"
+if USE_STRUCTURED:
+    from yourbench.utils.logging import get_logger
+    logger = get_logger()
+else:
+    from loguru import logger
 
 
 @dataclass

@@ -1,5 +1,21 @@
+import os
 import tiktoken
-from loguru import logger
+# Use structured logging if enabled
+USE_STRUCTURED = os.getenv("YOURBENCH_STRUCTURED_LOGGING", "false").lower() == "true"
+if USE_STRUCTURED:
+    from yourbench.utils.logging import get_logger
+    logger = get_logger()
+else:
+    from loguru import logger
+if USE_STRUCTURED:
+    from yourbench.utils.logging import log_stage
+else:
+    # Create dummy decorator if not using structured logging
+    def log_stage(name):
+        def decorator(func):
+            return func
+        return decorator
+
 
 from datasets import Dataset
 from yourbench.utils.chunking_utils import split_into_token_chunks

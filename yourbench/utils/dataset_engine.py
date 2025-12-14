@@ -9,7 +9,13 @@ from pathlib import Path
 from contextlib import suppress
 from dataclasses import dataclass
 
-from loguru import logger
+# Use structured logging if enabled
+USE_STRUCTURED = os.getenv("YOURBENCH_STRUCTURED_LOGGING", "false").lower() == "true"
+if USE_STRUCTURED:
+    from yourbench.utils.logging import get_logger
+    logger = get_logger()
+else:
+    from loguru import logger
 
 from datasets import Dataset, DatasetDict, load_dataset, load_from_disk, concatenate_datasets
 from huggingface_hub import HfApi, DatasetCard, DatasetCardData, whoami

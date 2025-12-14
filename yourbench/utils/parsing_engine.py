@@ -1,3 +1,4 @@
+import os
 import re
 import json
 import random
@@ -5,7 +6,13 @@ import string
 import hashlib
 from typing import Any, Optional
 
-from loguru import logger
+# Use structured logging if enabled
+USE_STRUCTURED = os.getenv("YOURBENCH_STRUCTURED_LOGGING", "false").lower() == "true"
+if USE_STRUCTURED:
+    from yourbench.utils.logging import get_logger
+    logger = get_logger()
+else:
+    from loguru import logger
 
 from yourbench.utils.question_models import QuestionRow, validate_list, force_int_in_range
 

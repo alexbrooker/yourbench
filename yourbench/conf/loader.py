@@ -7,7 +7,13 @@ Loads YAML configs and merges with schema defaults using OmegaConf.
 import os
 from pathlib import Path
 
-from loguru import logger
+# Use structured logging if enabled
+USE_STRUCTURED = os.getenv("YOURBENCH_STRUCTURED_LOGGING", "false").lower() == "true"
+if USE_STRUCTURED:
+    from yourbench.utils.logging import get_logger
+    logger = get_logger()
+else:
+    from loguru import logger
 from omegaconf import OmegaConf, DictConfig
 
 from yourbench.conf.schema import ModelConfig, YourbenchConfig

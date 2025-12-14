@@ -8,28 +8,17 @@ from pathlib import Path
 import typer
 from dotenv import load_dotenv
 
-# Use structured logging if enabled via env var
-USE_STRUCTURED_LOGGING = os.getenv("YOURBENCH_STRUCTURED_LOGGING", "false").lower() == "true"
-
-if USE_STRUCTURED_LOGGING:
+# Use structured logging if available, fallback to loguru
+try:
     from yourbench.utils.logging import (
         configure_logging,
         get_logger,
         LogLevel
     )
-    logger = get_logger()
-    # Configure structured logging
-    log_level = os.getenv("YOURBENCH_LOG_LEVEL", "INFO")
-    log_file = os.getenv("YOURBENCH_LOG_FILE")
-    try:
-        configure_logging(level=LogLevel[log_level], file_path=log_file)
-    except (KeyError, TypeError):
-        configure_logging(level=LogLevel.INFO, file_path=log_file)
-else:
+    STRUCTURED_LOGGING_AVAILABLE = True
+except ImportError:
     from loguru import logger
-    # Configure logging
-    logger.remove()
-    logger.add(sys.stderr, level=os.getenv("YOURBENCH_LOG_LEVEL", "INFO"))
+    STRUCTURED_LOGGING_AVAILABLE = False
 
 load_dotenv()
 
@@ -41,17 +30,36 @@ app = typer.Typer(
 )
 
 
+def setup_logging(debug: bool = False):
+    """Set up logging based on available system."""
+    if STRUCTURED_LOGGING_AVAILABLE:
+        level = LogLevel.DEBUG if debug else LogLevel.INFO
+        env_level = os.getenv("YOURBENCH_LOG_LEVEL", "").upper()
+        if env_level and hasattr(LogLevel, env_level):
+            level = LogLevel[env_level]
+        
+        # Set up structured logging
+        configure_logging(
+            level=level,
+            console=True,
+            file_path=None  # Will use default based on timestamp
+        )
+        return get_logger()
+    else:
+        # Fallback to loguru
+        logger.remove()
+        level = "DEBUG" if debug else os.getenv("YOURBENCH_LOG_LEVEL", "INFO")
+        logger.add(sys.stderr, level=level)
+        return logger
+
+
 @app.command()
 def run(
     config_path: str = typer.Argument(..., help="Path to YAML config file"),
     debug: bool = typer.Option(False, "--debug", help="Enable debug logging"),
 ) -> None:
     """Run YourBench pipeline with a config file."""
-    if debug and not USE_STRUCTURED_LOGGING:
-        # Only for loguru
-        if hasattr(logger, 'remove'):
-            logger.remove()
-            logger.add(sys.stderr, level="DEBUG")
+    logger = setup_logging(debug)
 
     config_file = Path(config_path)
     if not config_file.exists():
@@ -65,7 +73,7 @@ def run(
     logger.info(f"Running with config: {config_file}")
 
     from yourbench.conf.loader import load_config
-    from yourbench.pipeline.handler import run_pipeline_with_config
+    from yourbench.pipeline.handler_updated import run_pipeline_with_config
     from yourbench.utils.dataset_engine import upload_dataset_card
 
     try:
@@ -78,7 +86,10 @@ def run(
         except Exception as e:
             logger.warning(f"Failed to upload dataset card: {e}")
     except Exception as e:
-        logger.exception(f"Pipeline failed: {e}")
+        if STRUCTURED_LOGGING_AVAILABLE:
+            logger.exception(f"Pipeline failed", exc=e)
+        else:
+            logger.exception(f"Pipeline failed: {e}")
         raise typer.Exit(1)
 
 
@@ -97,20 +108,9 @@ def version_command() -> None:
 def main() -> None:
     """Entry point for the CLI."""
     # Handle version flag
-    if "--version" in sys.argv or "-v" in sys.argv:
+    if len(sys.argv) == 2 and sys.argv[1] in {"--version", "-v"}:
         version_command()
         return
-
-    # If no arguments, show help
-    if len(sys.argv) == 1:
-        app()
-        return
-
-    # If first arg looks like a path (not a command), assume it's 'run'
-    if len(sys.argv) > 1:
-        first_arg = sys.argv[1]
-        if not first_arg.startswith("-") and first_arg not in ["run", "version"]:
-            sys.argv = [sys.argv[0], "run"] + sys.argv[1:]
 
     app()
 

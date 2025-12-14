@@ -1,8 +1,15 @@
+import os
 import time
 from typing import Any, Dict, List
 from dataclasses import dataclass
 
-from loguru import logger
+# Use structured logging if enabled
+USE_STRUCTURED = os.getenv("YOURBENCH_STRUCTURED_LOGGING", "false").lower() == "true"
+if USE_STRUCTURED:
+    from yourbench.utils.logging import get_logger
+    logger = get_logger()
+else:
+    from loguru import logger
 
 # User prompts are now passed via configuration
 from yourbench.utils.chunking_utils import sample_multihop_groups, sample_single_hop_chunks

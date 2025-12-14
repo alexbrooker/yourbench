@@ -4,7 +4,13 @@ Analysis module for running various analyses on the evaluation results.
 
 from typing import List, Optional
 
-from loguru import logger
+# Use structured logging if enabled
+USE_STRUCTURED = os.getenv("YOURBENCH_STRUCTURED_LOGGING", "false").lower() == "true"
+if USE_STRUCTURED:
+    from yourbench.utils.logging import get_logger
+    logger = get_logger()
+else:
+    from loguru import logger
 
 
 def run_analysis(analysis_name: str, args: Optional[List[str]] = None, debug: bool = False) -> None:

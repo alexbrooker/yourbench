@@ -7,29 +7,12 @@ from pathlib import Path
 
 import typer
 from dotenv import load_dotenv
+from loguru import logger
 
-# Use structured logging if enabled via env var
-USE_STRUCTURED_LOGGING = os.getenv("YOURBENCH_STRUCTURED_LOGGING", "false").lower() == "true"
 
-if USE_STRUCTURED_LOGGING:
-    from yourbench.utils.logging import (
-        configure_logging,
-        get_logger,
-        LogLevel
-    )
-    logger = get_logger()
-    # Configure structured logging
-    log_level = os.getenv("YOURBENCH_LOG_LEVEL", "INFO")
-    log_file = os.getenv("YOURBENCH_LOG_FILE")
-    try:
-        configure_logging(level=LogLevel[log_level], file_path=log_file)
-    except (KeyError, TypeError):
-        configure_logging(level=LogLevel.INFO, file_path=log_file)
-else:
-    from loguru import logger
-    # Configure logging
-    logger.remove()
-    logger.add(sys.stderr, level=os.getenv("YOURBENCH_LOG_LEVEL", "INFO"))
+# Configure logging
+logger.remove()
+logger.add(sys.stderr, level=os.getenv("YOURBENCH_LOG_LEVEL", "INFO"))
 
 load_dotenv()
 
@@ -47,11 +30,9 @@ def run(
     debug: bool = typer.Option(False, "--debug", help="Enable debug logging"),
 ) -> None:
     """Run YourBench pipeline with a config file."""
-    if debug and not USE_STRUCTURED_LOGGING:
-        # Only for loguru
-        if hasattr(logger, 'remove'):
-            logger.remove()
-            logger.add(sys.stderr, level="DEBUG")
+    if debug:
+        logger.remove()
+        logger.add(sys.stderr, level="DEBUG")
 
     config_file = Path(config_path)
     if not config_file.exists():
