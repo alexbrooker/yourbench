@@ -641,21 +641,21 @@ def parse_responses_with_custom_schema(
                     # When using a custom schema, the dataset columns should exactly match
                     # the schema fields - not add them alongside QuestionRow fields.
                     # Only add minimal metadata that's not in the schema
-                    
+
                     # Add essential metadata if not already in the schema
                     if "chunk_id" not in item_dict:
                         item_dict["chunk_id"] = index_map[i][0]
-                    
+
                     if "document_id" not in item_dict:
                         item_dict["document_id"] = index_map[i][1]
-                    
+
                     if "generating_model" not in item_dict:
                         item_dict["generating_model"] = model
-                    
+
                     # Store raw response for debugging if not in schema
                     if "raw_response" not in item_dict:
                         item_dict["raw_response"] = reply
-                    
+
                     # The dataset will have ONLY the fields from the custom schema
                     # plus the minimal metadata added above
                     rows.append(item_dict)
