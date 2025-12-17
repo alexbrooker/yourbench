@@ -8,6 +8,14 @@ from typing import Any, Optional
 from loguru import logger
 
 from yourbench.utils.question_models import QuestionRow, validate_list, force_int_in_range
+from yourbench.schemas.question_schemas import (
+    MultiChoiceQuestion,
+    MultiHopQuestionBatch,
+    SingleShotQuestionBatch,
+)
+from yourbench.utils.structured_generation import (
+    StructuredGenerator,
+)
 
 
 # JSON parsing functions
@@ -238,6 +246,11 @@ def normalize_multi_choice(pair: dict[str, Any]) -> Optional[dict[str, Any]]:
 
 
 def parse_single_shot_responses(responses, index_map, stage_cfg):
+    """Parse single-shot responses with optional structured output support.
+
+    If use_structured_outputs is enabled in config, attempts to parse responses
+    using Pydantic schemas for validation. Falls back to legacy parsing if needed.
+    """
     rows = []
     question_mode = (
         str(
@@ -251,13 +264,57 @@ def parse_single_shot_responses(responses, index_map, stage_cfg):
         .lower()
     )
 
+    # Check if structured outputs are enabled
+    use_structured = (
+        getattr(stage_cfg, "use_structured_outputs", False)
+        if hasattr(stage_cfg, "use_structured_outputs")
+        else stage_cfg.get("use_structured_outputs", False)
+        if isinstance(stage_cfg, dict)
+        else False
+    )
+
+    if use_structured:
+        logger.info("Using structured output parsing for single-shot questions")
+        generator = StructuredGenerator()
+
     for model, replies in responses.items():
         if len(replies) != len(index_map):
             logger.error(f"Mismatch: model '{model}' replies={len(replies)}, expected={len(index_map)}")
             continue
 
         for i, reply in enumerate(replies):
-            parsed_qa_pairs = parse_qa_pairs_from_response(reply)
+            parsed_qa_pairs = None
+
+            # Try structured parsing first if enabled
+            if use_structured:
+                structured_batch = generator.parse_structured_response(reply, SingleShotQuestionBatch, strict=False)
+
+                if structured_batch:
+                    # Convert structured response to legacy format
+                    parsed_qa_pairs = []
+                    for q in structured_batch.qa_pairs:
+                        pair_dict = {
+                            "question": q.question,
+                            "answer": q.answer,
+                            "question_type": q.question_type.value,
+                            "estimated_difficulty": q.estimated_difficulty,
+                            "thought_process": q.thought_process,
+                            "citations": [c.text for c in q.citations],
+                        }
+                        if isinstance(q, MultiChoiceQuestion):
+                            pair_dict["choices"] = q.choices
+                            # Ensure answer matches correct choice
+                            choice_idx = ord(q.correct_choice) - ord("A")
+                            if 0 <= choice_idx < len(q.choices):
+                                pair_dict["answer"] = q.choices[choice_idx]
+                        parsed_qa_pairs.append(pair_dict)
+                else:
+                    logger.debug(f"Structured parsing failed at index {i}, trying legacy parser")
+
+            # Fallback to legacy parsing if structured parsing wasn't used or failed
+            if parsed_qa_pairs is None:
+                parsed_qa_pairs = parse_qa_pairs_from_response(reply)
+
             if not parsed_qa_pairs:
                 logger.warning(f"No parseable QA pairs at index {i}.")
                 continue
@@ -312,6 +369,11 @@ def parse_single_shot_responses(responses, index_map, stage_cfg):
 
 
 def parse_multi_hop_responses(responses, index_map, stage_cfg):
+    """Parse multi-hop responses with optional structured output support.
+
+    If use_structured_outputs is enabled in config, attempts to parse responses
+    using Pydantic schemas for validation. Falls back to legacy parsing if needed.
+    """
     rows = []
     question_mode = (
         str(
@@ -325,9 +387,53 @@ def parse_multi_hop_responses(responses, index_map, stage_cfg):
         .lower()
     )
 
+    # Check if structured outputs are enabled
+    use_structured = (
+        getattr(stage_cfg, "use_structured_outputs", False)
+        if hasattr(stage_cfg, "use_structured_outputs")
+        else stage_cfg.get("use_structured_outputs", False)
+        if isinstance(stage_cfg, dict)
+        else False
+    )
+
+    if use_structured:
+        logger.info("Using structured output parsing for multi-hop questions")
+        generator = StructuredGenerator()
+
     for model, replies in responses.items():
         for i, raw in enumerate(replies):
-            parsed = parse_qa_pairs_from_response(raw)
+            parsed = None
+
+            # Try structured parsing first if enabled
+            if use_structured:
+                structured_batch = generator.parse_structured_response(raw, MultiHopQuestionBatch, strict=False)
+
+                if structured_batch:
+                    # Convert structured response to legacy format
+                    parsed = []
+                    for q in structured_batch.qa_pairs:
+                        pair_dict = {
+                            "question": q.question,
+                            "answer": q.answer,
+                            "question_type": q.question_type.value,
+                            "estimated_difficulty": q.estimated_difficulty,
+                            "thought_process": q.thought_process,
+                            "citations": [c.text for c in q.citations],
+                        }
+                        if isinstance(q, MultiChoiceQuestion):
+                            pair_dict["choices"] = q.choices
+                            # Ensure answer matches correct choice
+                            choice_idx = ord(q.correct_choice) - ord("A")
+                            if 0 <= choice_idx < len(q.choices):
+                                pair_dict["answer"] = q.choices[choice_idx]
+                        parsed.append(pair_dict)
+                else:
+                    logger.debug(f"Structured parsing failed for multi-hop at index {i}, trying legacy parser")
+
+            # Fallback to legacy parsing if structured parsing wasn't used or failed
+            if parsed is None:
+                parsed = parse_qa_pairs_from_response(raw)
+
             for pair in parsed:
                 if not isinstance(pair, dict):
                     logger.debug(f"Skipping non-dict item in multi-hop response: {type(pair)}")

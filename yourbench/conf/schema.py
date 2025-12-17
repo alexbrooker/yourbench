@@ -135,6 +135,8 @@ class SingleShotConfig:
     single_shot_system_prompt_multi: str = ""
     single_shot_user_prompt: str = ""
     chunk_sampling: ChunkSamplingConfig = field(default_factory=ChunkSamplingConfig)
+    use_structured_outputs: bool = False
+    structured_fallback: bool = True
 
     def __post_init__(self):
         valid_modes = {"open-ended", "multi-choice", ""}
@@ -155,6 +157,8 @@ class MultiHopConfig:
     multi_hop_system_prompt: str = ""
     multi_hop_system_prompt_multi: str = ""
     multi_hop_user_prompt: str = ""
+    use_structured_outputs: bool = False
+    structured_fallback: bool = True
 
     def __post_init__(self):
         valid_modes = {"open-ended", "multi-choice", ""}
