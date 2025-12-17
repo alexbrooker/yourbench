@@ -1,0 +1,28 @@
+hf_configuration:
+  hf_dataset_name: custom-schema-test
+model_list:
+- api_key: ${oc.env:OPENAI_API_KEY}
+  base_url: ${oc.env:OPENAI_BASE_URL}
+  max_concurrent_requests: 8
+  model_name: ${oc.env:OPENAI_MODEL}
+pipeline:
+  chunking:
+    run: true
+  ingestion:
+    source_documents_dir: example/custom_schema_example/data
+  prepare_lighteval:
+    run: false
+  single_shot_question_generation:
+    custom_schema_auto_batch: true
+    custom_schema_class: Question
+    custom_schema_path: .ai/comms/example_pydantic.py
+    run: true
+    single_shot_system_prompt: You are an expert at creating educational question-answer
+      pairs.
+    single_shot_user_prompt: 'Based on the following text, create question-answer
+      pairs with follow-up questions:
+
+
+      {text_chunk}'
+  summarization:
+    run: false

@@ -5,6 +5,7 @@ These dataclasses define the expected config structure and provide
 sensible defaults. OmegaConf merges user configs with these defaults.
 """
 
+from typing import Optional
 from dataclasses import field, dataclass
 
 
@@ -137,6 +138,9 @@ class SingleShotConfig:
     chunk_sampling: ChunkSamplingConfig = field(default_factory=ChunkSamplingConfig)
     use_structured_outputs: bool = False
     structured_fallback: bool = True
+    custom_schema_path: Optional[str] = None
+    custom_schema_class: Optional[str] = None
+    custom_schema_auto_batch: bool = True
 
     def __post_init__(self):
         valid_modes = {"open-ended", "multi-choice", ""}
@@ -159,6 +163,9 @@ class MultiHopConfig:
     multi_hop_user_prompt: str = ""
     use_structured_outputs: bool = False
     structured_fallback: bool = True
+    custom_schema_path: Optional[str] = None
+    custom_schema_class: Optional[str] = None
+    custom_schema_auto_batch: bool = True
 
     def __post_init__(self):
         valid_modes = {"open-ended", "multi-choice", ""}

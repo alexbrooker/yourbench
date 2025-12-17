@@ -556,3 +556,140 @@ def _remove_duplicate_questions(rows: list[dict]) -> list[dict]:
         logger.info(f"No duplicate questions detected. Final count: {len(deduped_rows)}")
 
     return deduped_rows
+
+
+def parse_responses_with_custom_schema(
+    responses: dict,
+    index_map: list,
+    stage_cfg: Any,
+    schema_path: str,
+    schema_class: Optional[str] = None,
+    auto_batch: bool = True,
+) -> list[dict]:
+    """Parse responses using a custom Pydantic schema.
+
+    Args:
+        responses: Model responses dictionary
+        index_map: Index mapping for responses
+        stage_cfg: Stage configuration
+        schema_path: Path to Python file containing Pydantic model
+        schema_class: Name of the class to use (optional)
+        auto_batch: Whether to auto-wrap in batch if needed
+
+    Returns:
+        List of parsed question dictionaries
+    """
+    import json
+
+    from yourbench.utils.schema_loader import (
+        load_schema_from_file,
+        create_example_from_schema,
+        generate_schema_description,
+        validate_schema_for_generation,
+    )
+    from yourbench.utils.question_models import QuestionRow
+    from yourbench.utils.structured_generation import StructuredGenerator
+
+    # Load the custom schema
+    try:
+        custom_schema = load_schema_from_file(schema_path, schema_class, auto_batch)
+        validate_schema_for_generation(custom_schema)
+        logger.info(f"Loaded custom schema: {custom_schema.__name__}")
+    except Exception as e:
+        logger.error(f"Failed to load custom schema from {schema_path}: {e}")
+        logger.warning("Falling back to standard parsing")
+        return parse_single_shot_responses(responses, index_map, stage_cfg)
+
+    # Generate schema description and example for logging
+    schema_desc = generate_schema_description(custom_schema)
+    schema_example = create_example_from_schema(custom_schema)
+    logger.debug(f"Schema description:\n{schema_desc}")
+    logger.debug(f"Schema example: {json.dumps(schema_example, indent=2)}")
+
+    # Initialize structured generator
+    generator = StructuredGenerator()
+    rows = []
+
+    # Process responses
+    for model, replies in responses.items():
+        if len(replies) != len(index_map):
+            logger.error(f"Mismatch: model '{model}' replies={len(replies)}, expected={len(index_map)}")
+            continue
+
+        for i, reply in enumerate(replies):
+            try:
+                # Parse with custom schema
+                parsed = generator.parse_structured_response(reply, custom_schema, strict=False)
+
+                if not parsed:
+                    logger.warning(f"Failed to parse response at index {i} with custom schema")
+                    continue
+
+                # Convert to question rows
+                # Handle both single items and batches
+                items = []
+                if hasattr(parsed, "items"):
+                    # It's a batch
+                    items = parsed.items
+                elif hasattr(parsed, "__dict__"):
+                    # Single item
+                    items = [parsed]
+
+                for item in items:
+                    # Convert Pydantic model to dict
+                    item_dict = item.model_dump() if hasattr(item, "model_dump") else item.dict()
+
+                    # Map custom fields to standard QuestionRow fields
+                    # This is flexible - users can have any field names
+                    question_text = item_dict.get("question", "")
+                    if not question_text:
+                        # Try other common field names
+                        question_text = item_dict.get("query", "") or item_dict.get("prompt", "")
+
+                    answer_text = item_dict.get("answer", "")
+                    if not answer_text:
+                        # Try other common field names
+                        answer_text = (
+                            item_dict.get("response", "")
+                            or item_dict.get("solution", "")
+                            or item_dict.get("self_answer", "")
+                        )
+
+                    # Build QuestionRow with available fields
+                    row = QuestionRow(
+                        chunk_id=index_map[i][0],
+                        source_chunk_ids=[index_map[i][0]],
+                        document_id=index_map[i][1],
+                        additional_instructions=getattr(stage_cfg, "additional_instructions", ""),
+                        question=question_text.strip(),
+                        self_answer=answer_text.strip(),
+                        choices=[],  # Will be filled if multi-choice
+                        estimated_difficulty=item_dict.get("difficulty", 5),
+                        self_assessed_question_type=item_dict.get("question_type", "custom"),
+                        question_mode="open-ended",  # Will be updated based on schema
+                        generating_model=model,
+                        thought_process=item_dict.get("thought_process", ""),
+                        raw_response=reply,
+                        citations=item_dict.get("citations", []),
+                    )
+
+                    # Check for multi-choice fields
+                    if "choices" in item_dict:
+                        row.choices = item_dict["choices"]
+                        row.question_mode = "multi-choice"
+
+                    # Check for follow-up questions (from example_pydantic.py)
+                    row_dict = row.to_dict()
+
+                    # Add any extra fields from custom schema
+                    for key, value in item_dict.items():
+                        if key not in row_dict and value:  # Only add non-empty values
+                            row_dict[key] = value
+
+                    rows.append(row_dict)
+
+            except Exception as e:
+                logger.warning(f"Error parsing response at index {i} with custom schema: {e}")
+                continue
+
+    return rows

@@ -4,12 +4,18 @@ from typing import Any
 from loguru import logger
 
 from datasets import Dataset
+from yourbench.utils.schema_loader import (
+    load_schema_from_file,
+    create_example_from_schema,
+    generate_schema_description,
+)
 from yourbench.utils.chunking_utils import get_sampling_cfg
 from yourbench.utils.dataset_engine import custom_load_dataset, custom_save_dataset
 from yourbench.utils.parsing_engine import (
     parse_multi_hop_responses,
     _remove_duplicate_questions,
     parse_single_shot_responses,
+    parse_responses_with_custom_schema,
 )
 from yourbench.utils.logging_context import log_step, log_stage
 from yourbench.utils.cross_document_utils import create_cross_document_dataset
@@ -88,6 +94,26 @@ def run_single_shot(config) -> None:
             dataset = custom_load_dataset(config=config, subset="chunked")
             logger.debug(f"Loaded {len(dataset) if dataset else 0} documents")
 
+        # If using custom schema, modify the prompt to include schema info
+        if hasattr(stage_cfg, "custom_schema_path") and stage_cfg.custom_schema_path:
+            try:
+                import json
+
+                custom_schema = load_schema_from_file(
+                    stage_cfg.custom_schema_path, stage_cfg.custom_schema_class, stage_cfg.custom_schema_auto_batch
+                )
+                schema_desc = generate_schema_description(custom_schema)
+                schema_example = create_example_from_schema(custom_schema)
+
+                # Update system message to include schema info
+                original_system = system_msg["content"]
+                schema_instructions = f"""\n\nYou must generate your response as valid JSON that matches exactly this schema:\n\n{schema_desc}\n\nExample of expected format:\n```json\n{json.dumps(schema_example, indent=2)}\n```\n\nGenerate your response as a JSON object or array of JSON objects matching this structure."""
+                system_msg["content"] = original_system + schema_instructions
+                logger.info("Added custom schema instructions to system prompt")
+
+            except Exception as e:
+                logger.warning(f"Failed to load custom schema for prompting: {e}")
+
         with log_step("generating_questions"):
             responses, index_map = _build_and_run_inference(
                 dataset,
@@ -99,7 +125,21 @@ def run_single_shot(config) -> None:
             )
 
         with log_step("saving_questions"):
-            if rows := parse_single_shot_responses(responses, index_map, stage_cfg):
+            # Check if custom schema is configured
+            if hasattr(stage_cfg, "custom_schema_path") and stage_cfg.custom_schema_path:
+                logger.info(f"Using custom schema from {stage_cfg.custom_schema_path}")
+                rows = parse_responses_with_custom_schema(
+                    responses,
+                    index_map,
+                    stage_cfg,
+                    stage_cfg.custom_schema_path,
+                    stage_cfg.custom_schema_class,
+                    stage_cfg.custom_schema_auto_batch,
+                )
+            else:
+                rows = parse_single_shot_responses(responses, index_map, stage_cfg)
+
+            if rows:
                 _save_questions(rows, config, "single_shot_questions")
                 logger.info(f"Saved {len(rows)} single-shot questions")
 
