@@ -107,9 +107,62 @@ def run_single_shot(config) -> None:
 
                 # Update system message to include schema info
                 original_system = system_msg["content"]
-                schema_instructions = f"""\n\nYou must generate your response as valid JSON that matches exactly this schema:\n\n{schema_desc}\n\nExample of expected format:\n```json\n{json.dumps(schema_example, indent=2)}\n```\n\nGenerate your response as a JSON object or array of JSON objects matching this structure."""
+                
+                # Get the actual field information from the schema
+                schema_fields = []
+                if hasattr(custom_schema, "__fields__"):
+                    # Pydantic v1
+                    for field_name, field_obj in custom_schema.__fields__.items():
+                        if field_name != "items":  # Skip batch wrapper
+                            field_type = str(field_obj.type_).replace('typing.', '')
+                            desc = field_obj.field_info.description or f"The {field_name}"
+                            schema_fields.append(f"- {field_name}: {desc}")
+                elif hasattr(custom_schema, "model_fields"):
+                    # Pydantic v2
+                    for field_name, field_obj in custom_schema.model_fields.items():
+                        if field_name != "items":  # Skip batch wrapper
+                            desc = field_obj.description or f"The {field_name}"
+                            schema_fields.append(f"- {field_name}: {desc}")
+                
+                # If it's a batch schema, get the inner model
+                if "Batch" in custom_schema.__name__ and hasattr(custom_schema, "model_fields"):
+                    items_field = custom_schema.model_fields.get("items")
+                    if items_field and hasattr(items_field.annotation, "__args__"):
+                        inner_model = items_field.annotation.__args__[0]
+                        schema_fields = []
+                        if hasattr(inner_model, "model_fields"):
+                            for field_name, field_obj in inner_model.model_fields.items():
+                                desc = field_obj.description or f"The {field_name}"
+                                schema_fields.append(f"- {field_name}: {desc}")
+                
+                # Create concrete examples based on the actual Question model
+                example_1 = {
+                    "question": "What is the main purpose of the document?",
+                    "answer": "Based on the context, the document discusses...",
+                    "follow_up_question": "How does this relate to the broader context?",
+                    "follow_up_answer": "This relates to the broader context by..."
+                }
+                
+                example_2 = {
+                    "question": "What are the key points mentioned?",
+                    "answer": "The key points mentioned in the document are...",
+                    "follow_up_question": "Which point is most significant?",
+                    "follow_up_answer": "The most significant point is..."
+                }
+                
+                # Format the response based on whether it's a batch
+                if "Batch" in custom_schema.__name__:
+                    full_example = {"items": [example_1, example_2]}
+                    response_format = '{"items": [<questions>]}'
+                else:
+                    full_example = [example_1, example_2]
+                    response_format = '[<questions>]'
+                
+                schema_instructions = f"""\n\nCRITICAL: You MUST generate output in EXACTLY this JSON format:\n\nRequired fields (and ONLY these fields):\n- question: The question text\n- answer: The complete answer\n- follow_up_question: A related follow-up question\n- follow_up_answer: The answer to the follow-up\n\nDO NOT include any other fields like thought_process, citations, difficulty, etc.\n\nExamples of CORRECT format:\n```json\n{json.dumps(full_example, indent=2)}\n```\n\nGenerate questions following EXACTLY this structure."""
+                
                 system_msg["content"] = original_system + schema_instructions
-                logger.info("Added custom schema instructions to system prompt")
+                logger.info(f"Added custom schema instructions to system prompt")
+                logger.info(f"Loaded custom schema: {custom_schema.__name__}")
 
             except Exception as e:
                 logger.warning(f"Failed to load custom schema for prompting: {e}")

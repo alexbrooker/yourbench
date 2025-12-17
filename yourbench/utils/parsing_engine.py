@@ -617,26 +617,85 @@ def parse_responses_with_custom_schema(
 
         for i, reply in enumerate(replies):
             try:
-                # Parse with custom schema
-                parsed = generator.parse_structured_response(reply, custom_schema, strict=False)
-
-                if not parsed:
-                    logger.warning(f"Failed to parse response at index {i} with custom schema")
-                    continue
-
-                # Convert to question rows
-                # Handle both single items and batches
+                # Try multiple extraction strategies for custom schemas
                 items = []
-                if hasattr(parsed, "items"):
-                    # It's a batch
-                    items = parsed.items
-                elif hasattr(parsed, "__dict__"):
-                    # Single item
-                    items = [parsed]
+                
+                # First try the structured generator
+                parsed = generator.parse_structured_response(reply, custom_schema, strict=False)
+                if parsed:
+                    if hasattr(parsed, "items"):
+                        # It's a batch
+                        items = parsed.items
+                    elif hasattr(parsed, "__dict__"):
+                        # Single item
+                        items = [parsed]
+                else:
+                    # Try direct JSON parsing as fallback
+                    logger.debug(f"Structured parser failed, trying direct JSON extraction")
+                    
+                    # Extract JSON from response
+                    json_str = reply.strip()
+                    
+                    # Remove markdown code blocks if present
+                    if "```json" in json_str:
+                        json_str = json_str.split("```json")[1].split("```")[0].strip()
+                    elif "```" in json_str:
+                        json_str = json_str.split("```")[1].split("```")[0].strip()
+                    
+                    # Try to parse as JSON
+                    try:
+                        data = json.loads(json_str)
+                        
+                        # Handle different response formats
+                        if isinstance(data, dict) and "items" in data:
+                            # Batch format: {"items": [...]}
+                            items = data["items"]
+                        elif isinstance(data, list):
+                            # List format: [...]
+                            items = data
+                        elif isinstance(data, dict):
+                            # Single item
+                            items = [data]
+                        
+                        # Convert dicts to have only the fields from our schema
+                        validated_items = []
+                        for item in items:
+                            if isinstance(item, dict):
+                                # Only keep fields that match our custom schema
+                                if "Batch" in custom_schema.__name__ and hasattr(custom_schema, "model_fields"):
+                                    # Get the inner model for batch schemas
+                                    items_field = custom_schema.model_fields.get("items")
+                                    if items_field and hasattr(items_field.annotation, "__args__"):
+                                        inner_model = items_field.annotation.__args__[0]
+                                        if hasattr(inner_model, "model_fields"):
+                                            valid_fields = set(inner_model.model_fields.keys())
+                                            filtered_item = {k: v for k, v in item.items() if k in valid_fields}
+                                            if filtered_item:
+                                                validated_items.append(filtered_item)
+                                else:
+                                    # Direct schema
+                                    if hasattr(custom_schema, "model_fields"):
+                                        valid_fields = set(custom_schema.model_fields.keys())
+                                        filtered_item = {k: v for k, v in item.items() if k in valid_fields}
+                                        if filtered_item:
+                                            validated_items.append(filtered_item)
+                        
+                        items = validated_items
+                        
+                    except json.JSONDecodeError as e:
+                        logger.debug(f"JSON parsing failed: {e}")
+                        continue
 
                 for item in items:
-                    # Convert Pydantic model to dict
-                    item_dict = item.model_dump() if hasattr(item, "model_dump") else item.dict()
+                    # Convert Pydantic model or dict
+                    if hasattr(item, "model_dump"):
+                        item_dict = item.model_dump()
+                    elif hasattr(item, "dict"):
+                        item_dict = item.dict()
+                    elif isinstance(item, dict):
+                        item_dict = item
+                    else:
+                        continue
 
                     # When using a custom schema, the dataset columns should exactly match
                     # the schema fields - not add them alongside QuestionRow fields.
