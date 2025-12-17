@@ -587,7 +587,6 @@ def parse_responses_with_custom_schema(
         generate_schema_description,
         validate_schema_for_generation,
     )
-    from yourbench.utils.question_models import QuestionRow
     from yourbench.utils.structured_generation import StructuredGenerator
 
     # Load the custom schema
@@ -639,54 +638,27 @@ def parse_responses_with_custom_schema(
                     # Convert Pydantic model to dict
                     item_dict = item.model_dump() if hasattr(item, "model_dump") else item.dict()
 
-                    # Map custom fields to standard QuestionRow fields
-                    # This is flexible - users can have any field names
-                    question_text = item_dict.get("question", "")
-                    if not question_text:
-                        # Try other common field names
-                        question_text = item_dict.get("query", "") or item_dict.get("prompt", "")
-
-                    answer_text = item_dict.get("answer", "")
-                    if not answer_text:
-                        # Try other common field names
-                        answer_text = (
-                            item_dict.get("response", "")
-                            or item_dict.get("solution", "")
-                            or item_dict.get("self_answer", "")
-                        )
-
-                    # Build QuestionRow with available fields
-                    row = QuestionRow(
-                        chunk_id=index_map[i][0],
-                        source_chunk_ids=[index_map[i][0]],
-                        document_id=index_map[i][1],
-                        additional_instructions=getattr(stage_cfg, "additional_instructions", ""),
-                        question=question_text.strip(),
-                        self_answer=answer_text.strip(),
-                        choices=[],  # Will be filled if multi-choice
-                        estimated_difficulty=item_dict.get("difficulty", 5),
-                        self_assessed_question_type=item_dict.get("question_type", "custom"),
-                        question_mode="open-ended",  # Will be updated based on schema
-                        generating_model=model,
-                        thought_process=item_dict.get("thought_process", ""),
-                        raw_response=reply,
-                        citations=item_dict.get("citations", []),
-                    )
-
-                    # Check for multi-choice fields
-                    if "choices" in item_dict:
-                        row.choices = item_dict["choices"]
-                        row.question_mode = "multi-choice"
-
-                    # Check for follow-up questions (from example_pydantic.py)
-                    row_dict = row.to_dict()
-
-                    # Add any extra fields from custom schema
-                    for key, value in item_dict.items():
-                        if key not in row_dict and value:  # Only add non-empty values
-                            row_dict[key] = value
-
-                    rows.append(row_dict)
+                    # When using a custom schema, the dataset columns should exactly match
+                    # the schema fields - not add them alongside QuestionRow fields.
+                    # Only add minimal metadata that's not in the schema
+                    
+                    # Add essential metadata if not already in the schema
+                    if "chunk_id" not in item_dict:
+                        item_dict["chunk_id"] = index_map[i][0]
+                    
+                    if "document_id" not in item_dict:
+                        item_dict["document_id"] = index_map[i][1]
+                    
+                    if "generating_model" not in item_dict:
+                        item_dict["generating_model"] = model
+                    
+                    # Store raw response for debugging if not in schema
+                    if "raw_response" not in item_dict:
+                        item_dict["raw_response"] = reply
+                    
+                    # The dataset will have ONLY the fields from the custom schema
+                    # plus the minimal metadata added above
+                    rows.append(item_dict)
 
             except Exception as e:
                 logger.warning(f"Error parsing response at index {i} with custom schema: {e}")
