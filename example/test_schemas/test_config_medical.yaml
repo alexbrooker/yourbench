@@ -1,0 +1,29 @@
+# Test configuration using custom medical question schema
+hf_configuration:
+  hf_dataset_name: medical-questions-test
+model_list:
+- api_key: ${oc.env:OPENAI_API_KEY}
+  base_url: ${oc.env:OPENAI_BASE_URL}
+  max_concurrent_requests: 8
+  model_name: ${oc.env:OPENAI_MODEL}
+pipeline:
+  chunking:
+    run: true
+  ingestion:
+    source_documents_dir: example/default_example/data  # Using existing test data
+  prepare_lighteval:
+    run: false
+  single_shot_question_generation:
+    custom_schema_path: example/test_schemas/medical_question.py
+    custom_schema_class: MedicalQuestion
+    custom_schema_auto_batch: false  # Test without auto-batching
+    run: true
+    single_shot_system_prompt: |
+      You are a medical educator creating clinical assessment questions.
+      Focus on evidence-based medicine and include relevant clinical context.
+    single_shot_user_prompt: |
+      Based on the following text, create medical/scientific questions with evidence levels:
+      
+      {text_chunk}
+  summarization:
+    run: false

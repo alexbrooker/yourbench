@@ -1,0 +1,32 @@
+# Test configuration using custom coding question schema
+hf_configuration:
+  hf_dataset_name: coding-questions-test
+model_list:
+- api_key: ${oc.env:OPENAI_API_KEY}
+  base_url: ${oc.env:OPENAI_BASE_URL}
+  max_concurrent_requests: 8
+  model_name: ${oc.env:OPENAI_MODEL}
+pipeline:
+  chunking:
+    run: true
+    l_max_tokens: 1000  # Larger chunks for coding problems
+  ingestion:
+    source_documents_dir: example/default_example/data
+  prepare_lighteval:
+    run: false
+  single_shot_question_generation:
+    custom_schema_path: example/test_schemas/coding_question.py
+    custom_schema_class: CodingQuestion
+    custom_schema_auto_batch: true  # Test with auto-batching
+    run: true
+    single_shot_system_prompt: |
+      You are a computer science educator creating programming problems.
+      Focus on algorithmic thinking and clean code practices.
+    single_shot_user_prompt: |
+      Based on the following technical content, create coding problems with test cases:
+      
+      {text_chunk}
+      
+      Include problem statement, expected approach, sample solution, and test cases.
+  summarization:
+    run: false

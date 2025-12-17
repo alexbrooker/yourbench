@@ -1,22 +1,20 @@
-"""Pydantic schemas for structured outputs."""
+"""Default Pydantic schemas for YourBench question generation."""
 
-from yourbench.schemas.question_schemas import (
-    Citation,
-    QuestionType,
-    QuestionBatch,
-    OpenEndedQuestion,
+from yourbench.schemas.default_schemas import (
+    MultiHopQuestion,
+    SingleHopQuestion,
     MultiChoiceQuestion,
     MultiHopQuestionBatch,
-    SingleShotQuestionBatch,
+    SingleHopQuestionBatch,
+    MultiChoiceQuestionBatch,
 )
 
 
 __all__ = [
-    "QuestionType",
-    "Citation",
-    "OpenEndedQuestion",
-    "MultiChoiceQuestion",
-    "QuestionBatch",
-    "SingleShotQuestionBatch",
+    "SingleHopQuestion",
+    "SingleHopQuestionBatch",
+    "MultiHopQuestion",
     "MultiHopQuestionBatch",
+    "MultiChoiceQuestion",
+    "MultiChoiceQuestionBatch",
 ]
