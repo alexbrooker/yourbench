@@ -1,0 +1,7 @@
+# Custom model configuration from environment variables
+# This goes into model_list in the final config
+model_name: ${oc.env:OPENAI_MODEL,gpt-4}
+base_url: ${oc.env:OPENAI_BASE_URL}
+api_key: ${oc.env:OPENAI_API_KEY}
+max_concurrent_requests: 10
+encoding_name: cl100k_base

@@ -1,0 +1,33 @@
+# @package _global_
+# Main Hydra configuration
+
+# No defaults for now, everything explicit
+model_list:
+  - model_name: ${oc.env:OPENAI_MODEL,gpt-4}
+    base_url: ${oc.env:OPENAI_BASE_URL}
+    api_key: ${oc.env:OPENAI_API_KEY}
+    max_concurrent_requests: 10
+    encoding_name: cl100k_base
+
+hf_configuration:
+  hf_dataset_name: yourbench-dataset-${now:%Y%m%d-%H%M%S}
+  hf_organization: ${oc.env:HF_ORGANIZATION,yourbench-testing}
+  hf_token: ${oc.env:HF_TOKEN}
+  private: true
+  push_to_hub: true
+  local_saving: true
+  local_dataset_dir: data/saved_dataset
+
+pipeline:
+  ingestion:
+    source_documents_dir: data/source_documents
+    output_dir: data/processed
+  summarization:
+    run: true
+  chunking:
+    run: true
+  single_shot_question_generation:
+    run: true
+    max_questions_to_generate: 50
+  prepare_lighteval:
+    run: true

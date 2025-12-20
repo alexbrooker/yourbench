@@ -1,0 +1,22 @@
+# Default pipeline configuration - all stages
+pipeline:
+  ingestion:
+    source_documents_dir: data/source_documents
+    output_dir: data/processed
+  summarization:
+    run: true
+  chunking:
+    run: true
+  single_shot_question_generation:
+    run: true
+    max_questions_to_generate: 50
+  multi_hop_question_generation:
+    run: false
+  cross_document_question_generation:
+    run: false
+  question_rewriting:
+    run: false
+  citation_score_filtering:
+    run: false
+  prepare_lighteval:
+    run: true

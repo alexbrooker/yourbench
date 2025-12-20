@@ -1,0 +1,6 @@
+# OpenAI GPT-4 configuration
+model_list:
+  - model_name: gpt-4
+    api_key: ${oc.env:OPENAI_API_KEY}
+    max_concurrent_requests: 8
+    encoding_name: cl100k_base

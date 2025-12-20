@@ -1,0 +1,9 @@
+# HuggingFace configuration without uploading
+hf_configuration:
+  hf_dataset_name: yourbench-dataset-local
+  local_dataset_dir: data/saved_dataset
+  local_saving: true
+  upload_card: false
+  export_jsonl: true
+  jsonl_export_dir: data/jsonl_export
+  push_to_hub: false

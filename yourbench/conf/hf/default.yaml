@@ -1,0 +1,13 @@
+# Default HuggingFace Hub configuration
+hf_configuration:
+  hf_dataset_name: yourbench-dataset-${now:%Y%m%d-%H%M%S}
+  hf_organization: ${oc.env:HF_ORGANIZATION,yourbench-testing}
+  hf_token: ${oc.env:HF_TOKEN}
+  private: true
+  concat_if_exist: false
+  local_dataset_dir: data/saved_dataset
+  local_saving: true
+  upload_card: true
+  export_jsonl: false
+  jsonl_export_dir: data/jsonl_export
+  push_to_hub: true

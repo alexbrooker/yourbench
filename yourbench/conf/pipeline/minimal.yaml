@@ -1,0 +1,22 @@
+# Minimal pipeline - only essential stages
+pipeline:
+  ingestion:
+    source_documents_dir: data/source_documents
+    output_dir: data/processed
+  summarization:
+    run: false
+  chunking:
+    run: true
+  single_shot_question_generation:
+    run: true
+    max_questions_to_generate: 10
+  multi_hop_question_generation:
+    run: false
+  cross_document_question_generation:
+    run: false
+  question_rewriting:
+    run: false
+  citation_score_filtering:
+    run: false
+  prepare_lighteval:
+    run: false

@@ -1,0 +1,35 @@
+# Hydra configuration test - matching existing schema
+# @package _global_
+
+model_list:
+  - model_name: ${oc.env:OPENAI_MODEL,gpt-4}
+    base_url: ${oc.env:OPENAI_BASE_URL}
+    api_key: ${oc.env:OPENAI_API_KEY}
+    max_concurrent_requests: 10
+    encoding_name: cl100k_base
+
+hf_configuration:
+  hf_dataset_name: hydra-test-run
+  hf_organization: ${oc.env:HF_ORGANIZATION,yourbench-testing}
+  hf_token: ${oc.env:HF_TOKEN}
+  private: true
+  push_to_hub: true
+  local_saving: true
+  local_dataset_dir: data/saved_dataset
+
+pipeline:
+  ingestion:
+    source_documents_dir: example/default_example/data
+    output_dir: data/hydra_test
+  summarization:
+    run: false
+  chunking:
+    run: true
+  single_shot_question_generation:
+    run: true
+    chunk_sampling:
+      enable: true
+      num_samples: 5
+      strategy: random
+  prepare_lighteval:
+    run: false
