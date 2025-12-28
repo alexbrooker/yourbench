@@ -28,27 +28,26 @@ class TestExpandEnvValue:
         assert expand_env_value("") == ""
         assert expand_env_value("some/path/to/file.txt") == "some/path/to/file.txt"
 
-    def test_brace_syntax_not_expanded(self):
-        """Strings with ${VAR} syntax should not be expanded."""
-        assert expand_env_value("${HOME}") == "${HOME}"
-        assert expand_env_value("${PATH}") == "${PATH}"
-
     @patch.dict(os.environ, {"TEST_VAR": "test_value"}, clear=False)
     def test_env_var_expanded(self):
         """$VAR should be replaced with its environment value."""
         assert expand_env_value("$TEST_VAR") == "test_value"
 
-    @patch.dict(os.environ, {}, clear=True)
-    def test_missing_env_var_returns_empty_string(self):
-        """Missing env vars should return empty string."""
-        # Ensure the var doesn't exist
-        os.environ.pop("MISSING_VAR", None)
-        assert expand_env_value("$MISSING_VAR") == ""
+    @patch.dict(os.environ, {"HOME_TEST": "/home/user"}, clear=False)
+    def test_brace_syntax_expanded(self):
+        """${VAR} syntax should also be expanded."""
+        assert expand_env_value("${HOME_TEST}/data") == "/home/user/data"
 
     @patch.dict(os.environ, {"MULTI_WORD": "hello world"}, clear=False)
     def test_env_var_with_spaces(self):
         """Env vars with spaces in values should work."""
         assert expand_env_value("$MULTI_WORD") == "hello world"
+
+    def test_missing_env_var_not_expanded(self):
+        """Missing env vars are left as-is by os.path.expandvars."""
+        # os.path.expandvars leaves undefined vars as-is
+        result = expand_env_value("$DEFINITELY_NOT_SET_XYZ123")
+        assert result == "$DEFINITELY_NOT_SET_XYZ123"
 
 
 class TestExpandEnvRecursive:
@@ -115,13 +114,7 @@ class TestValidateEnvExpanded:
         with pytest.raises(ValueError, match="HF_TOKEN.*not set"):
             validate_env_expanded("$HF_TOKEN", "token_field")
 
-    def test_unexpanded_var_with_path_extracts_var_name(self):
-        """Unexpanded $VAR/path should extract just the var name."""
-        with pytest.raises(ValueError, match="ORG.*not set"):
-            validate_env_expanded("$ORG/repo", "org_field")
-
-    def test_dollar_brace_syntax_raises(self):
-        """${VAR} syntax also raises since it starts with $."""
-        # OmegaConf should expand these before they reach this function
-        with pytest.raises(ValueError, match="not set"):
-            validate_env_expanded("${HOME}/data", "path")
+    def test_unexpanded_var_in_middle_raises(self):
+        """Unexpanded $VAR in middle of string should also raise."""
+        with pytest.raises(ValueError, match="SOME_VAR.*not set"):
+            validate_env_expanded("prefix/$SOME_VAR/suffix", "path")

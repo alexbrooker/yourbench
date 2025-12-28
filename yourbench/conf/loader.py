@@ -79,7 +79,7 @@ def load_config(yaml_path: str | Path) -> YourbenchConfig:
 
     # Transform the data
     data = _handle_legacy_fields(data)
-    data = _expand_env_vars(data)
+    data = expand_env_recursive(data)  # Expand $VAR syntax
     data = _mark_enabled_stages(data)
     data = _auto_load_openai_from_env(data)
 
@@ -106,11 +106,6 @@ def _handle_legacy_fields(data: dict[str, Any]) -> dict[str, Any]:
         data["pipeline"] = data.pop("pipeline_config")
 
     return data
-
-
-def _expand_env_vars(data: Any) -> Any:
-    """Recursively expand $VAR syntax in data."""
-    return expand_env_recursive(data)
 
 
 def _mark_enabled_stages(data: dict[str, Any]) -> dict[str, Any]:
