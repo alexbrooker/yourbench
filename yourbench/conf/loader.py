@@ -139,7 +139,7 @@ def _auto_load_openai_from_env(data: dict[str, Any]) -> dict[str, Any]:
     openai_model = {
         "model_name": os.getenv("OPENAI_MODEL", "gpt-4"),
         "api_key": "$OPENAI_API_KEY",
-        "max_concurrent_requests": 8,
+        "max_concurrent_requests": 128,
     }
 
     base_url = os.getenv("OPENAI_BASE_URL")

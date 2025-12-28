@@ -40,7 +40,7 @@ class ModelConfig(BaseModel):
     model_name: str = ""
     base_url: str | None = None
     api_key: str | None = None
-    max_concurrent_requests: int = 32
+    max_concurrent_requests: int = 128
     encoding_name: str = "cl100k_base"
     provider: str | None = None
     bill_to: str | None = None
