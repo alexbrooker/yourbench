@@ -312,3 +312,6 @@ def create_cross_document_dataset(dataset: Dataset, stage_cfg: dict[str, Any]) -
     if not cross_rows:
         logger.warning("No cross-document combinations were generated.")
         return Dataset.from_list([])
+
+    logger.info(f"Generated {len(cross_rows)} cross-document combinations successfully")
+    return Dataset.from_list(cross_rows)
