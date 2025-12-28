@@ -56,7 +56,7 @@ def validate_env_expanded(value: str, field: str) -> str:
         ValueError: If value contains unexpanded $VAR.
     """
     # Check for unexpanded $VAR or ${VAR} patterns
-    match = re.search(r'\$\{?([A-Z_][A-Z0-9_]*)\}?', value)
+    match = re.search(r"\$\{?([A-Z_][A-Z0-9_]*)\}?", value)
     if match:
         var_name = match.group(1)
         msg = f"Environment variable '{var_name}' in '{field}' not set"
