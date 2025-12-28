@@ -56,7 +56,7 @@ pipeline:
 
 Key points:
 - **Pipeline stages are enabled by presence** - if a stage appears in `pipeline:`, it runs
-- **Environment variables** can be used with `$VAR_NAME` syntax
+- **Environment variables** can be used with `$VAR_NAME` or `${VAR_NAME}` syntax (both work)
 - **Model roles** are auto-assigned if not specified (uses first model in `model_list`)
 - **Strict validation** - unknown or misspelled config fields will cause an error. Check your field names match the documented options.
 
@@ -274,7 +274,7 @@ pipeline:
 
 ### Environment Variables
 
-Use `$VAR_NAME` syntax to reference environment variables:
+Use `$VAR_NAME` or `${VAR_NAME}` syntax to reference environment variables:
 
 ```yaml
 hf_configuration:
