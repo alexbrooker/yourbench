@@ -40,6 +40,12 @@ class Model:
     def __post_init__(self):
         if self.api_key is None:
             self.api_key = os.getenv("HF_TOKEN", None)
+        # Warn if base_url is set but api_key is still missing
+        if self.base_url and not self.api_key:
+            logger.warning(
+                f"Model '{self.model_name}' has base_url set but no api_key. "
+                "API calls may fail. Set api_key or HF_TOKEN environment variable."
+            )
 
 
 @dataclass

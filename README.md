@@ -141,8 +141,9 @@ The `example/` folder contains ready-to-use configurations:
 
 - `default_example/` – Basic setup with sample documents
 - `harry_potter_quizz/` – Generate quiz questions from books
-- `aws_support_documentation/` – Technical documentation benchmark
+- `custom_prompts_demo/` – Custom prompts for domain-specific questions
 - `local_vllm_private_data/` – Use local models for private data
+- `rich_pdf_extraction_with_gemini/` – LLM-based PDF extraction for charts/figures
 
 Run any example:
 

@@ -88,6 +88,20 @@ def _has_difficulty_field(pair: dict) -> bool:
     return bool(difficulty_fields & pair.keys())
 
 
+def _is_valid_question_list(items: list) -> bool:
+    """Check if a list appears to contain question dicts.
+
+    Returns True if at least one item is a dict with a 'question' key.
+    This helps filter out arrays of strings or other non-question data.
+    """
+    if not items:
+        return False
+    for item in items:
+        if isinstance(item, dict) and ("question" in item or "answer" in item):
+            return True
+    return False
+
+
 # JSON parsing functions
 
 
@@ -122,19 +136,49 @@ def _maybe_strip_triple_backticks(text_in: str) -> str:
 def _best_effort_json_extract(full_text: str) -> list[str]:
     """
     Collect bracket-delimited substrings that might be valid JSON.
+    Uses balanced bracket parsing to correctly extract nested JSON structures.
     Returns a list of candidates (which may be empty).
     """
     if not full_text or not isinstance(full_text, str):
         return []
     candidates = []
     try:
-        pattern = r"([\[{].*?[\]}])"
-        matches = re.findall(pattern, full_text, flags=re.DOTALL)
-        for match_text in matches:
-            if (match_text.startswith("[") and match_text.endswith("]")) or (
-                match_text.startswith("{") and match_text.endswith("}")
-            ):
-                candidates.append(match_text.strip())
+        i = 0
+        while i < len(full_text):
+            if full_text[i] in "[{":
+                start = i
+                open_char = full_text[i]
+                close_char = "]" if open_char == "[" else "}"
+                depth = 1
+                in_string = False
+                escape_next = False
+                j = i + 1
+
+                while j < len(full_text):
+                    ch = full_text[j]
+
+                    if escape_next:
+                        escape_next = False
+                        j += 1
+                        continue
+
+                    if ch == "\\" and in_string:
+                        escape_next = True
+                    elif ch == '"':
+                        in_string = not in_string
+                    elif not in_string:
+                        if ch in "[{":
+                            depth += 1
+                        elif ch in "]}":
+                            depth -= 1
+                            if depth == 0:
+                                candidate = full_text[start : j + 1].strip()
+                                if candidate:
+                                    candidates.append(candidate)
+                                i = j
+                                break
+                    j += 1
+            i += 1
     except Exception as e:
         logger.debug(f"Error in best-effort JSON extraction: {e}")
     return candidates
@@ -213,7 +257,7 @@ def parse_qa_pairs_from_response(raw_response: str) -> list[dict[str, Any]]:
     extracted_json_str = _extract_tag_content(raw_response, "output_json")
     if extracted_json_str.strip():
         possible_parsed = _attempt_json_parse(_maybe_strip_triple_backticks(extracted_json_str))
-        if isinstance(possible_parsed, list):
+        if isinstance(possible_parsed, list) and _is_valid_question_list(possible_parsed):
             return possible_parsed
 
     # 2) Check for ```json fenced code block
@@ -221,17 +265,29 @@ def parse_qa_pairs_from_response(raw_response: str) -> list[dict[str, Any]]:
     fence_match = re.search(fence_pattern, raw_response)
     if fence_match:
         possible_parsed = _attempt_json_parse(fence_match.group(1).strip())
-        if isinstance(possible_parsed, list):
+        if isinstance(possible_parsed, list) and _is_valid_question_list(possible_parsed):
             return possible_parsed
 
     # 3) Best-effort bracket-based extraction
     bracket_candidates = _best_effort_json_extract(raw_response)
+    logger.debug(f"Found {len(bracket_candidates)} bracket candidates")
     for candidate in bracket_candidates:
         possible_parsed = _attempt_json_parse(candidate)
-        if isinstance(possible_parsed, list):
+        if possible_parsed is not None:
+            logger.debug(f"Parsed JSON type: {type(possible_parsed).__name__}")
+            # Handle {"questions": [...]} wrapper format from some models
+            if isinstance(possible_parsed, dict):
+                logger.debug(f"Dict keys: {list(possible_parsed.keys())[:5]}")
+                for key in ["questions", "question_list", "qa_pairs", "pairs", "data"]:
+                    if key in possible_parsed and isinstance(possible_parsed[key], list):
+                        if _is_valid_question_list(possible_parsed[key]):
+                            logger.debug(f"Extracted questions from '{key}' key")
+                            return possible_parsed[key]
+        if isinstance(possible_parsed, list) and _is_valid_question_list(possible_parsed):
             return possible_parsed
 
     # If no valid parse was found, return empty.
+    logger.debug("No valid question list found in response")
     return []
 
 

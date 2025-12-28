@@ -45,6 +45,12 @@ def _validate_mode(mode: str) -> str:
     return mode
 
 
+def _get_mode_from_config(stage_cfg: Any) -> str:
+    """Extract and validate question_mode from stage config."""
+    raw_mode = getattr(stage_cfg, "question_mode", None) or ""
+    return _validate_mode(raw_mode)
+
+
 def _build_and_run_inference(
     dataset: Dataset, system_msg: dict, stage_cfg: Any, builder_func: callable, step_name: str, config
 ) -> tuple[dict, list]:
@@ -85,10 +91,7 @@ def run_single_shot(config) -> None:
             logger.info("single_shot_question_generation disabled")
             return
 
-        mode = stage_cfg.question_mode.strip().lower() if stage_cfg.question_mode else "open-ended"
-        if mode not in {"open-ended", "multi-choice"}:
-            logger.warning(f"Invalid question_mode '{mode}', defaulting to 'open-ended'")
-            mode = "open-ended"
+        mode = _get_mode_from_config(stage_cfg)
         logger.info(f"Single-shot mode: {mode}")
 
         system_msg = {"role": "system", "content": _get_system_prompt(stage_cfg, mode)}
@@ -120,10 +123,7 @@ def run_multi_hop(config) -> None:
         logger.info("Multi-hop question generation disabled")
         return
 
-    mode = stage_cfg.question_mode.strip().lower() if stage_cfg.question_mode else "open-ended"
-    if mode not in {"open-ended", "multi-choice"}:
-        logger.warning(f"Invalid question_mode '{mode}', defaulting to 'open-ended'")
-        mode = "open-ended"
+    mode = _get_mode_from_config(stage_cfg)
     system_msg = {"role": "system", "content": _get_system_prompt(stage_cfg, mode, is_multi=True)}
 
     chunked_ds = custom_load_dataset(config=config, subset="chunked")
@@ -141,10 +141,7 @@ def run_cross_document(config) -> None:
         logger.info("Cross-document question generation disabled")
         return
 
-    mode = stage_cfg.question_mode.strip().lower() if stage_cfg.question_mode else "open-ended"
-    if mode not in {"open-ended", "multi-choice"}:
-        logger.warning(f"Invalid question_mode '{mode}', defaulting to 'open-ended'")
-        mode = "open-ended"
+    mode = _get_mode_from_config(stage_cfg)
     system_msg = {"role": "system", "content": _get_system_prompt(stage_cfg, mode, is_multi=True)}
 
     chunked_ds = custom_load_dataset(config=config, subset="chunked")
@@ -178,3 +175,5 @@ def _process_questions(dataset: Dataset, label: str, system_msg: dict, stage_cfg
 
     if rows := parse_multi_hop_responses(responses, index_map, stage_cfg):
         _save_questions(rows, config, label)
+    else:
+        logger.warning(f"No valid questions parsed for {label} (check model output format)")

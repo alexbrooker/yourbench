@@ -112,27 +112,17 @@ def _write_aggregate_log():
     """Writes the aggregated cost data to a file at program exit."""
     try:
         if not _cost_data:
-            logger.info("No cost data collected, skipping aggregate log.")
             return
 
         _ensure_logs_dir()
-        logger.info(f"Writing aggregate cost log to {_aggregate_log_file}")
         with open(_aggregate_log_file, "w", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
             writer.writerow(["model_name", "total_input_tokens", "total_output_tokens", "total_calls"])
             for model_name, data in sorted(_cost_data.items()):
                 writer.writerow([model_name, data["input_tokens"], data["output_tokens"], data["calls"]])
-        logger.success(f"Aggregate cost log successfully written to {_aggregate_log_file}")
     except Exception as e:
-        # Try logger first, fallback to stderr if logger is shutting down
-        try:
-            logger.error(f"Failed to write aggregate cost log: {e}")
-        except Exception:
-            # Logger might be shutting down during atexit, write to stderr directly
-            import sys
-
-            sys.stderr.write(f"ERROR: Failed to write aggregate cost log: {e}\n")
-            sys.stderr.flush()
+        # Silent fail during shutdown - logger/stdout may be closed
+        pass
 
 
 # Register the aggregate log function to run at exit

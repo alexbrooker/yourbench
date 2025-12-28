@@ -121,10 +121,18 @@ def create_cross_document_dataset(dataset: Dataset, stage_cfg: dict[str, Any]) -
         A new Dataset with cross-document combinations, preserving a similar schema but with an aggregated summary.
     """
     # Extract and validate configuration
-    max_combinations = stage_cfg.max_combinations
-    chunks_per_document = stage_cfg.chunks_per_document
-    num_docs_range = stage_cfg.num_docs_per_combination
-    random_seed = stage_cfg.random_seed
+    max_combinations = (
+        stage_cfg.get("max_combinations", 100) if isinstance(stage_cfg, dict) else stage_cfg.max_combinations
+    )
+    chunks_per_document = (
+        stage_cfg.get("chunks_per_document", 1) if isinstance(stage_cfg, dict) else stage_cfg.chunks_per_document
+    )
+    num_docs_range = (
+        stage_cfg.get("num_docs_per_combination", [2, 5])
+        if isinstance(stage_cfg, dict)
+        else stage_cfg.num_docs_per_combination
+    )
+    random_seed = stage_cfg.get("random_seed", 42) if isinstance(stage_cfg, dict) else stage_cfg.random_seed
 
     min_docs, max_docs = num_docs_range
 
@@ -304,3 +312,6 @@ def create_cross_document_dataset(dataset: Dataset, stage_cfg: dict[str, Any]) -
     if not cross_rows:
         logger.warning("No cross-document combinations were generated.")
         return Dataset.from_list([])
+
+    logger.info(f"Generated {len(cross_rows)} cross-document combinations successfully")
+    return Dataset.from_list(cross_rows)

@@ -5,7 +5,6 @@ Pydantic models define the expected config structure and provide
 sensible defaults with built-in validation.
 """
 
-import os
 from typing import Any
 
 from pydantic import Field, BaseModel, model_validator
@@ -15,40 +14,6 @@ class ConfigValidationError(ValueError):
     """Raised when configuration validation fails."""
 
     pass
-
-
-def _expand_env(value: Any) -> Any:
-    """Expand $VAR syntax in string values."""
-    if not isinstance(value, str):
-        return value
-    if value.startswith("$") and not value.startswith("${"):
-        var_name = value[1:]
-        env_value = os.getenv(var_name)
-        if env_value is not None:
-            return env_value
-        if var_name == "HF_ORGANIZATION":
-            token = os.getenv("HF_TOKEN")
-            if token:
-                from huggingface_hub import HfApi
-
-                api = HfApi(token=token)
-                user_info = api.whoami()
-                return user_info.get("name", "")
-        return ""
-    return value
-
-
-def _expand_env_in_dict(data: dict[str, Any]) -> dict[str, Any]:
-    """Recursively expand $VAR in dict values."""
-    result = {}
-    for k, v in data.items():
-        if isinstance(v, dict):
-            result[k] = _expand_env_in_dict(v)
-        elif isinstance(v, list):
-            result[k] = [_expand_env(item) if isinstance(item, str) else item for item in v]
-        else:
-            result[k] = _expand_env(v)
-    return result
 
 
 class HFConfig(BaseModel):
@@ -66,7 +31,7 @@ class HFConfig(BaseModel):
     jsonl_export_dir: str = "data/jsonl_export"
     push_to_hub: bool = True
 
-    model_config = {"extra": "allow"}
+    model_config = {"extra": "forbid"}
 
 
 class ModelConfig(BaseModel):
@@ -75,13 +40,13 @@ class ModelConfig(BaseModel):
     model_name: str = ""
     base_url: str | None = None
     api_key: str | None = None
-    max_concurrent_requests: int = 32
+    max_concurrent_requests: int = 128
     encoding_name: str = "cl100k_base"
     provider: str | None = None
     bill_to: str | None = None
     extra_parameters: dict[str, Any] = Field(default_factory=dict)
 
-    model_config = {"extra": "allow"}
+    model_config = {"extra": "forbid"}
 
     @model_validator(mode="after")
     def validate_concurrency(self) -> "ModelConfig":
@@ -98,7 +63,7 @@ class ChunkSamplingConfig(BaseModel):
     strategy: str = "random"
     random_seed: int = 42
 
-    model_config = {"extra": "allow"}
+    model_config = {"extra": "forbid"}
 
     @model_validator(mode="after")
     def validate_samples(self) -> "ChunkSamplingConfig":
@@ -119,7 +84,7 @@ class IngestionConfig(BaseModel):
     pdf_llm_prompt: str = ""
     supported_file_extensions: list[str] = Field(default_factory=lambda: [".md", ".txt", ".pdf"])
 
-    model_config = {"extra": "allow"}
+    model_config = {"extra": "forbid"}
 
 
 class SummarizationConfig(BaseModel):
@@ -132,7 +97,7 @@ class SummarizationConfig(BaseModel):
     summarization_user_prompt: str = ""
     combine_summaries_user_prompt: str = ""
 
-    model_config = {"extra": "allow"}
+    model_config = {"extra": "forbid"}
 
     @model_validator(mode="after")
     def validate_tokens(self) -> "SummarizationConfig":
@@ -158,7 +123,7 @@ class ChunkingConfig(BaseModel):
     h_max: int = 5
     num_multihops_factor: int = 1
 
-    model_config = {"extra": "allow"}
+    model_config = {"extra": "forbid"}
 
     @model_validator(mode="after")
     def validate_chunking(self) -> "ChunkingConfig":
@@ -187,7 +152,7 @@ class SingleShotConfig(BaseModel):
     chunk_sampling: ChunkSamplingConfig = Field(default_factory=ChunkSamplingConfig)
 
     question_schema: str | None = None
-    model_config = {"extra": "allow"}
+    model_config = {"extra": "forbid"}
 
     @model_validator(mode="after")
     def validate_mode(self) -> "SingleShotConfig":
@@ -211,7 +176,7 @@ class MultiHopConfig(BaseModel):
     multi_hop_user_prompt: str = ""
 
     question_schema: str | None = None
-    model_config = {"extra": "allow"}
+    model_config = {"extra": "forbid"}
 
     @model_validator(mode="after")
     def validate_mode(self) -> "MultiHopConfig":
@@ -238,7 +203,7 @@ class CrossDocConfig(BaseModel):
     num_docs_per_combination: list[int] = Field(default_factory=lambda: [2, 5])
     random_seed: int = 42
 
-    model_config = {"extra": "allow"}
+    model_config = {"extra": "forbid"}
 
     question_schema: str | None = None
 
@@ -274,7 +239,7 @@ class QuestionRewritingConfig(BaseModel):
     question_rewriting_user_prompt: str = ""
     additional_instructions: str = ""
 
-    model_config = {"extra": "allow"}
+    model_config = {"extra": "forbid"}
 
 
 class LightevalConfig(BaseModel):
@@ -288,7 +253,7 @@ class LightevalConfig(BaseModel):
     summarized_subset: str = "summarized"
     output_subset: str = "prepared_lighteval"
 
-    model_config = {"extra": "allow"}
+    model_config = {"extra": "forbid"}
 
 
 class CitationFilteringConfig(BaseModel):
@@ -299,7 +264,7 @@ class CitationFilteringConfig(BaseModel):
     alpha: float = 0.7
     beta: float = 0.3
 
-    model_config = {"extra": "allow"}
+    model_config = {"extra": "forbid"}
 
     @model_validator(mode="after")
     def validate_coefficients(self) -> "CitationFilteringConfig":
@@ -323,7 +288,7 @@ class PipelineConfig(BaseModel):
     prepare_lighteval: LightevalConfig = Field(default_factory=LightevalConfig)
     citation_score_filtering: CitationFilteringConfig = Field(default_factory=CitationFilteringConfig)
 
-    model_config = {"extra": "allow"}
+    model_config = {"extra": "forbid"}
 
 
 class YourbenchConfig(BaseModel):
@@ -335,4 +300,4 @@ class YourbenchConfig(BaseModel):
     pipeline: PipelineConfig = Field(default_factory=PipelineConfig)
     debug: bool = False
 
-    model_config = {"extra": "allow"}
+    model_config = {"extra": "forbid"}

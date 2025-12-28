@@ -1,0 +1,23 @@
+# Custom Prompts Demo
+# This example shows how to use custom system prompts for question generation
+hf_configuration:
+  hf_dataset_name: yourbench-custom-prompts-demo
+  private: false
+
+model_list:
+  - model_name: openai/gpt-oss-120b
+    base_url: https://openrouter.ai/api/v1
+    api_key: $OPENROUTER_API_KEY
+
+pipeline:
+  ingestion:
+    source_documents_dir: example/custom_prompts_demo/data
+    output_dir: example/custom_prompts_demo/processed
+  summarization:
+  chunking:
+  single_shot_question_generation:
+    # Use custom prompt for kid-friendly questions
+    single_shot_system_prompt: example/custom_prompts_demo/custom_prompts/single_shot_system_prompt.md
+  multi_hop_question_generation:
+    multi_hop_system_prompt: example/custom_prompts_demo/custom_prompts/multi_hop_system_prompt.md
+  prepare_lighteval:

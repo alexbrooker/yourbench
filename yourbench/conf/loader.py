@@ -11,11 +11,11 @@ from pathlib import Path
 import yaml
 from loguru import logger
 
+from yourbench.utils.env import expand_env_recursive
 from yourbench.conf.schema import (
     ModelConfig,
     YourbenchConfig,
     ConfigValidationError,
-    _expand_env,
 )
 from yourbench.conf.prompts import DEFAULT_PROMPTS, load_prompt
 
@@ -79,7 +79,7 @@ def load_config(yaml_path: str | Path) -> YourbenchConfig:
 
     # Transform the data
     data = _handle_legacy_fields(data)
-    data = _expand_env_vars(data)
+    data = expand_env_recursive(data)  # Expand $VAR syntax
     data = _mark_enabled_stages(data)
     data = _auto_load_openai_from_env(data)
 
@@ -105,17 +105,6 @@ def _handle_legacy_fields(data: dict[str, Any]) -> dict[str, Any]:
     if "pipeline_config" in data and "pipeline" not in data:
         data["pipeline"] = data.pop("pipeline_config")
 
-    return data
-
-
-def _expand_env_vars(data: Any) -> Any:
-    """Recursively expand $VAR syntax in data."""
-    if isinstance(data, dict):
-        return {k: _expand_env_vars(v) for k, v in data.items()}
-    elif isinstance(data, list):
-        return [_expand_env_vars(item) for item in data]
-    elif isinstance(data, str):
-        return _expand_env(data)
     return data
 
 
@@ -150,7 +139,7 @@ def _auto_load_openai_from_env(data: dict[str, Any]) -> dict[str, Any]:
     openai_model = {
         "model_name": os.getenv("OPENAI_MODEL", "gpt-4"),
         "api_key": "$OPENAI_API_KEY",
-        "max_concurrent_requests": 8,
+        "max_concurrent_requests": 128,
     }
 
     base_url = os.getenv("OPENAI_BASE_URL")
@@ -186,8 +175,12 @@ def _load_prompts(config: YourbenchConfig) -> None:
 
             # Set the value on the Pydantic model
             setattr(obj, field, new_value)
+        except AttributeError:
+            # Stage not configured - this is expected for disabled stages
+            pass
         except Exception as exc:
-            logger.warning("Failed to load prompt", path=".".join(path_tuple), default=default_key, error=exc)
+            # Unexpected error - log at error level since prompts are critical
+            logger.error(f"Failed to load prompt for {'.'.join(path_tuple)}: {exc}")
 
 
 def _assign_model_roles(config: YourbenchConfig) -> None:
