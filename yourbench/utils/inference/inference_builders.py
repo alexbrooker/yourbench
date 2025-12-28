@@ -1,7 +1,7 @@
 import time
-from contextlib import contextmanager
-from dataclasses import dataclass, field
 from typing import Any, Dict, List
+from contextlib import contextmanager
+from dataclasses import field, dataclass
 
 from loguru import logger
 
@@ -12,6 +12,7 @@ from yourbench.utils.inference.inference_core import InferenceCall
 @dataclass
 class InferenceJob:
     """Enhanced inference job with metadata tracking."""
+
     inference_calls: List[InferenceCall]
     job_metadata: Dict[str, Any] = field(default_factory=dict)
     created_at: float = field(default_factory=time.time)
@@ -20,6 +21,7 @@ class InferenceJob:
 @dataclass
 class BuilderMetrics:
     """Metrics for tracking inference call generation."""
+
     total_documents: int = 0
     total_chunks_processed: int = 0
     total_calls_generated: int = 0
@@ -184,9 +186,17 @@ def build_multi_hop_inference_calls(dataset, system_msg, stage_cfg):
                             ),
                         }
 
-                        chunk_category = "few_chunks" if len(texts) <= 2 else "medium_chunks" if len(texts) <= 5 else "many_chunks"
+                        chunk_category = (
+                            "few_chunks" if len(texts) <= 2 else "medium_chunks" if len(texts) <= 5 else "many_chunks"
+                        )
                         tags = _build_tags(
-                            ["multi_hop_qa", f"doc_{idx}", f"group_{group_idx}", f"chunks_{len(texts)}", f"total_len_{len(full_text)}"],
+                            [
+                                "multi_hop_qa",
+                                f"doc_{idx}",
+                                f"group_{group_idx}",
+                                f"chunks_{len(texts)}",
+                                f"total_len_{len(full_text)}",
+                            ],
                             row,
                             [chunk_category],
                         )
