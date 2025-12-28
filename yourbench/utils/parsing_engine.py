@@ -270,12 +270,24 @@ def parse_qa_pairs_from_response(raw_response: str) -> list[dict[str, Any]]:
 
     # 3) Best-effort bracket-based extraction
     bracket_candidates = _best_effort_json_extract(raw_response)
+    logger.debug(f"Found {len(bracket_candidates)} bracket candidates")
     for candidate in bracket_candidates:
         possible_parsed = _attempt_json_parse(candidate)
+        if possible_parsed is not None:
+            logger.debug(f"Parsed JSON type: {type(possible_parsed).__name__}")
+            # Handle {"questions": [...]} wrapper format from some models
+            if isinstance(possible_parsed, dict):
+                logger.debug(f"Dict keys: {list(possible_parsed.keys())[:5]}")
+                for key in ["questions", "question_list", "qa_pairs", "pairs", "data"]:
+                    if key in possible_parsed and isinstance(possible_parsed[key], list):
+                        if _is_valid_question_list(possible_parsed[key]):
+                            logger.debug(f"Extracted questions from '{key}' key")
+                            return possible_parsed[key]
         if isinstance(possible_parsed, list) and _is_valid_question_list(possible_parsed):
             return possible_parsed
 
     # If no valid parse was found, return empty.
+    logger.debug("No valid question list found in response")
     return []
 
 
