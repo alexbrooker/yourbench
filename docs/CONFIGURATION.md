@@ -58,6 +58,7 @@ Key points:
 - **Pipeline stages are enabled by presence** - if a stage appears in `pipeline:`, it runs
 - **Environment variables** can be used with `$VAR_NAME` syntax
 - **Model roles** are auto-assigned if not specified (uses first model in `model_list`)
+- **Strict validation** - unknown or misspelled config fields will cause an error. Check your field names match the documented options.
 
 ## Minimal Example
 
