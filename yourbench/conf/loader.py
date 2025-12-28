@@ -186,8 +186,12 @@ def _load_prompts(config: YourbenchConfig) -> None:
 
             # Set the value on the Pydantic model
             setattr(obj, field, new_value)
+        except AttributeError:
+            # Stage not configured - this is expected for disabled stages
+            pass
         except Exception as exc:
-            logger.warning("Failed to load prompt", path=".".join(path_tuple), default=default_key, error=exc)
+            # Unexpected error - log at error level since prompts are critical
+            logger.error(f"Failed to load prompt for {'.'.join(path_tuple)}: {exc}")
 
 
 def _assign_model_roles(config: YourbenchConfig) -> None:

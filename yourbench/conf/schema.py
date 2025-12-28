@@ -38,19 +38,6 @@ def _expand_env(value: Any) -> Any:
     return value
 
 
-def _expand_env_in_dict(data: dict[str, Any]) -> dict[str, Any]:
-    """Recursively expand $VAR in dict values."""
-    result = {}
-    for k, v in data.items():
-        if isinstance(v, dict):
-            result[k] = _expand_env_in_dict(v)
-        elif isinstance(v, list):
-            result[k] = [_expand_env(item) if isinstance(item, str) else item for item in v]
-        else:
-            result[k] = _expand_env(v)
-    return result
-
-
 class HFConfig(BaseModel):
     """HuggingFace dataset configuration."""
 
