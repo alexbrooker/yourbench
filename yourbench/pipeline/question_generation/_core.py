@@ -175,3 +175,5 @@ def _process_questions(dataset: Dataset, label: str, system_msg: dict, stage_cfg
 
     if rows := parse_multi_hop_responses(responses, index_map, stage_cfg):
         _save_questions(rows, config, label)
+    else:
+        logger.warning(f"No valid questions parsed for {label} (check model output format)")
