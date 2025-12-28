@@ -116,7 +116,7 @@ model_list:
   - model_name: zai-org/GLM-4.5    # Required: model name or HF model ID
     base_url: null                  # Optional: custom API endpoint
     api_key: $HF_TOKEN             # Optional: API key (defaults to HF_TOKEN)
-    max_concurrent_requests: 32    # Default: 32 - parallel request limit
+    max_concurrent_requests: 128    # Default: 128 - parallel request limit
     encoding_name: cl100k_base     # Default: tokenizer for counting
     provider: null                 # Optional: openai, anthropic, etc.
     bill_to: null                  # Optional: billing project
