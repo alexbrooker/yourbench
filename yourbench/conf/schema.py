@@ -5,7 +5,6 @@ Pydantic models define the expected config structure and provide
 sensible defaults with built-in validation.
 """
 
-import os
 from typing import Any
 
 from pydantic import Field, BaseModel, model_validator
@@ -15,27 +14,6 @@ class ConfigValidationError(ValueError):
     """Raised when configuration validation fails."""
 
     pass
-
-
-def _expand_env(value: Any) -> Any:
-    """Expand $VAR syntax in string values."""
-    if not isinstance(value, str):
-        return value
-    if value.startswith("$") and not value.startswith("${"):
-        var_name = value[1:]
-        env_value = os.getenv(var_name)
-        if env_value is not None:
-            return env_value
-        if var_name == "HF_ORGANIZATION":
-            token = os.getenv("HF_TOKEN")
-            if token:
-                from huggingface_hub import HfApi
-
-                api = HfApi(token=token)
-                user_info = api.whoami()
-                return user_info.get("name", "")
-        return ""
-    return value
 
 
 class HFConfig(BaseModel):

@@ -12,6 +12,7 @@ from loguru import logger
 from datasets import Dataset, DatasetDict, load_dataset, load_from_disk, concatenate_datasets
 from huggingface_hub import HfApi, whoami
 from huggingface_hub.utils import HFValidationError
+from yourbench.utils.env import validate_env_expanded
 from yourbench.utils.dataset_card import upload_dataset_card
 
 
@@ -52,12 +53,10 @@ def _is_offline() -> bool:
 
 def _expand_var(value: str, field: str) -> str:
     """Ensure value is not unexpanded $VAR placeholder."""
-    if value.startswith("$"):
-        var_name = value[1:].split("/")[0]
-        msg = f"Environment variable '{var_name}' in '{field}' not set"
-        logger.error(msg)
-        raise ConfigurationError(msg)
-    return value
+    try:
+        return validate_env_expanded(value, field)
+    except ValueError as e:
+        raise ConfigurationError(str(e)) from e
 
 
 def _extract_settings(config) -> HFSettings:

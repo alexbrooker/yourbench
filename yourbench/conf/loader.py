@@ -11,11 +11,11 @@ from pathlib import Path
 import yaml
 from loguru import logger
 
+from yourbench.utils.env import expand_env_recursive
 from yourbench.conf.schema import (
     ModelConfig,
     YourbenchConfig,
     ConfigValidationError,
-    _expand_env,
 )
 from yourbench.conf.prompts import DEFAULT_PROMPTS, load_prompt
 
@@ -110,13 +110,7 @@ def _handle_legacy_fields(data: dict[str, Any]) -> dict[str, Any]:
 
 def _expand_env_vars(data: Any) -> Any:
     """Recursively expand $VAR syntax in data."""
-    if isinstance(data, dict):
-        return {k: _expand_env_vars(v) for k, v in data.items()}
-    elif isinstance(data, list):
-        return [_expand_env_vars(item) for item in data]
-    elif isinstance(data, str):
-        return _expand_env(data)
-    return data
+    return expand_env_recursive(data)
 
 
 def _mark_enabled_stages(data: dict[str, Any]) -> dict[str, Any]:
