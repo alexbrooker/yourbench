@@ -10,7 +10,7 @@ from yourbench.utils.dataset_engine import custom_load_dataset, custom_save_data
 from yourbench.utils.parsing_engine import (
     parse_multi_hop_responses,
     _remove_duplicate_questions,
-    parse_single_shot_responses,
+    parse_single_hop_responses,
 )
 from yourbench.utils.prompt_builder import build_system_prompt
 from yourbench.utils.logging_context import log_step, log_stage
@@ -18,13 +18,13 @@ from yourbench.utils.cross_document_utils import create_cross_document_dataset
 from yourbench.utils.inference.inference_core import run_inference
 from yourbench.utils.inference.inference_builders import (
     build_multi_hop_inference_calls,
-    build_single_shot_inference_calls,
+    build_single_hop_inference_calls,
 )
 
 
 def _get_system_prompt(stage_cfg: Any, mode: str, is_multi: bool = False) -> str:
     """Get system prompt, substituting schema placeholders if custom schema is specified."""
-    prefix = "multi_hop_" if is_multi else "single_shot_"
+    prefix = "multi_hop_" if is_multi else "single_hop_"
     suffix = "_multi" if mode == "multi-choice" else ""
     template = getattr(stage_cfg, f"{prefix}system_prompt{suffix}")
 
@@ -84,11 +84,11 @@ def _save_questions(rows: list[dict], config, subset: str) -> None:
     )
 
 
-def run_single_shot(config) -> None:
+def run_single_hop(config) -> None:
     """Generate single-hop questions from individual chunks."""
-    with log_stage("single_shot_generation"):
-        if not (stage_cfg := config.pipeline.single_shot_question_generation).run:
-            logger.info("single_shot_question_generation disabled")
+    with log_stage("single_hop_generation"):
+        if not (stage_cfg := config.pipeline.single_hop_question_generation).run:
+            logger.info("single_hop_question_generation disabled")
             return
 
         mode = _get_mode_from_config(stage_cfg)
@@ -105,14 +105,14 @@ def run_single_shot(config) -> None:
                 dataset,
                 system_msg,
                 stage_cfg,
-                build_single_shot_inference_calls,
-                "single_shot_question_generation",
+                build_single_hop_inference_calls,
+                "single_hop_question_generation",
                 config,
             )
 
         with log_step("saving_questions"):
-            if rows := parse_single_shot_responses(responses, index_map, stage_cfg):
-                _save_questions(rows, config, "single_shot_questions")
+            if rows := parse_single_hop_responses(responses, index_map, stage_cfg):
+                _save_questions(rows, config, "single_hop_questions")
                 logger.info(f"Saved {len(rows)} single-shot questions")
 
 

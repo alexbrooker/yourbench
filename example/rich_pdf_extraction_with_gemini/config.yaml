@@ -15,7 +15,7 @@ pipeline:
     output_dir: example/rich_pdf_extraction_with_gemini/processed
   summarization:
   chunking:
-  single_shot_question_generation:
+  single_hop_question_generation:
   multi_hop_question_generation:
   cross_document_question_generation:
   prepare_lighteval:

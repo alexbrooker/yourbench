@@ -12,7 +12,7 @@ from yourbench.conf.loader import get_enabled_stages
 
 # Map stage names to module paths for stages that live in subfolders
 _STAGE_MODULE_MAP = {
-    "single_shot_question_generation": "question_generation.single_shot",
+    "single_hop_question_generation": "question_generation.single_hop",
     "multi_hop_question_generation": "question_generation.multi_hop",
     "cross_document_question_generation": "question_generation.cross_document",
 }
@@ -22,7 +22,7 @@ _STAGE_DISPLAY_NAMES = {
     "ingestion": "Document Ingestion",
     "summarization": "Summarization",
     "chunking": "Chunking",
-    "single_shot_question_generation": "Single-Shot Questions",
+    "single_hop_question_generation": "Single-Hop Questions",
     "multi_hop_question_generation": "Multi-Hop Questions",
     "cross_document_question_generation": "Cross-Document Questions",
     "question_rewriting": "Question Rewriting",

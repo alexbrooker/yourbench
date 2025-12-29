@@ -79,7 +79,7 @@ def _create_call(messages: List[Dict], tags: List[str], stage_cfg) -> InferenceC
     )
 
 
-def build_single_shot_inference_calls(dataset, system_msg, stage_cfg, sampling_cfg):
+def build_single_hop_inference_calls(dataset, system_msg, stage_cfg, sampling_cfg):
     """Build single-shot inference calls with enhanced tracking."""
     calls = []
     index_map = []
@@ -109,7 +109,7 @@ def build_single_shot_inference_calls(dataset, system_msg, stage_cfg, sampling_c
 
                         user_msg = {
                             "role": "user",
-                            "content": stage_cfg.single_shot_user_prompt.format(
+                            "content": stage_cfg.single_hop_user_prompt.format(
                                 title=row.get("document_filename", f"doc_{idx}"),
                                 document_summary=row.get("document_summary", ""),
                                 text_chunk=chunk_text,
@@ -118,7 +118,7 @@ def build_single_shot_inference_calls(dataset, system_msg, stage_cfg, sampling_c
                         }
 
                         tags = _build_tags(
-                            ["single_shot_qa", f"doc_{idx}", f"chunk_{ch_idx}", f"chunk_len_{len(chunk_text)}"],
+                            ["single_hop_qa", f"doc_{idx}", f"chunk_{ch_idx}", f"chunk_len_{len(chunk_text)}"],
                             row,
                         )
                         call = _create_call([system_msg, user_msg], tags, stage_cfg)

@@ -51,7 +51,7 @@ pipeline:
     assert "summarization" in enabled
     assert "chunking" in enabled
     # Not present means disabled
-    assert "single_shot_question_generation" not in enabled
+    assert "single_hop_question_generation" not in enabled
 
 
 def test_legacy_field_renames(tmp_path):

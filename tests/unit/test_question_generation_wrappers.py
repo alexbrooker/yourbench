@@ -4,15 +4,15 @@ from unittest.mock import Mock, patch
 
 
 class TestSingleShotWrapper:
-    """Tests for single_shot module run() function."""
+    """Tests for single_hop module run() function."""
 
     def test_run_delegates_to_core(self):
-        """Verify run() calls the core run_single_shot function."""
+        """Verify run() calls the core run_single_hop function."""
         mock_config = Mock()
-        with patch("yourbench.pipeline.question_generation.single_shot.run_single_shot") as mock_core:
-            from yourbench.pipeline.question_generation import single_shot
+        with patch("yourbench.pipeline.question_generation.single_hop.run_single_hop") as mock_core:
+            from yourbench.pipeline.question_generation import single_hop
 
-            single_shot.run(mock_config)
+            single_hop.run(mock_config)
             mock_core.assert_called_once_with(mock_config)
 
 

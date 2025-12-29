@@ -284,8 +284,8 @@ def init(
     stages = []
     if Confirm.ask("Enable ingestion (document processing)", default=True):
         stages.append("ingestion")
-    if Confirm.ask("Enable single-shot question generation", default=True):
-        stages.append("single_shot_question_generation")
+    if Confirm.ask("Enable single-hop question generation", default=True):
+        stages.append("single_hop_question_generation")
     if Confirm.ask("Enable multi-hop question generation", default=False):
         stages.append("multi_hop_question_generation")
     if Confirm.ask("Enable cross-document question generation", default=False):
@@ -342,9 +342,9 @@ def init(
             "",
         ])
 
-    if "single_shot_question_generation" in stages:
+    if "single_hop_question_generation" in stages:
         config_lines.extend([
-            "  single_shot_question_generation:",
+            "  single_hop_question_generation:",
             "    question_mode: open-ended",
             "",
         ])
@@ -401,7 +401,7 @@ def stages() -> None:
         ("ingestion", "Process source documents (PDF, Markdown, text) into structured format"),
         ("summarization", "Generate summaries of document content"),
         ("chunking", "Split documents into smaller chunks for question generation"),
-        ("single_shot_question_generation", "Generate standalone Q&A pairs from chunks"),
+        ("single_hop_question_generation", "Generate standalone Q&A pairs from chunks"),
         ("multi_hop_question_generation", "Generate questions requiring multiple chunks to answer"),
         ("cross_document_question_generation", "Generate questions spanning multiple documents"),
         ("question_rewriting", "Rewrite questions for clarity and consistency"),
@@ -415,6 +415,68 @@ def stages() -> None:
     console.print(table)
     console.print()
     console.print("[dim]Enable stages by adding them to your config's pipeline section.[/dim]")
+
+
+@app.command()
+def estimate(
+    config_path: str = typer.Argument(..., help="Path to YAML config file"),
+) -> None:
+    """Estimate token usage for a pipeline run."""
+    _print_banner()
+
+    config_file = Path(config_path)
+    if not config_file.exists():
+        console.print(f"[bold red]✗[/bold red] Config file not found: {config_path}")
+        raise typer.Exit(1)
+
+    from yourbench.conf.loader import load_config
+    from yourbench.utils.token_estimation import format_token_count, estimate_pipeline_tokens
+
+    try:
+        with console.status("[bold cyan]Analyzing configuration..."):
+            config = load_config(config_file)
+            estimates = estimate_pipeline_tokens(config)
+
+        # Source info
+        console.print("[bold]Source Documents:[/bold]")
+        console.print(f"  Files: {estimates.get('source_file_count', 0)}")
+        console.print(f"  Estimated tokens: {format_token_count(estimates['source_tokens'])}")
+        console.print()
+
+        # Stage breakdown
+        table = Table(title="Token Estimation by Stage", show_header=True, header_style="bold magenta")
+        table.add_column("Stage", style="cyan")
+        table.add_column("Input Tokens", style="green", justify="right")
+        table.add_column("Output Tokens", style="yellow", justify="right")
+        table.add_column("API Calls", style="blue", justify="right")
+        table.add_column("Notes", style="dim")
+
+        for stage, info in estimates["stages"].items():
+            input_tok = format_token_count(info.get("input_tokens", 0)) if info.get("input_tokens") else "-"
+            output_tok = format_token_count(info.get("output_tokens", 0)) if info.get("output_tokens") else "-"
+            calls = str(info.get("calls", "-")) if info.get("calls") else "-"
+            note = info.get("note", "")
+            table.add_row(stage.replace("_", " ").title(), input_tok, output_tok, calls, note)
+
+        console.print(table)
+        console.print()
+
+        # Totals
+        console.print(Panel.fit(
+            f"[bold]Total Estimated Usage:[/bold]\n"
+            f"  Input tokens:  [green]{format_token_count(estimates['total_input_tokens'])}[/green]\n"
+            f"  Output tokens: [yellow]{format_token_count(estimates['total_output_tokens'])}[/yellow]\n"
+            f"  Total:         [bold cyan]{format_token_count(estimates['total_tokens'])}[/bold cyan]",
+            title="Summary",
+            border_style="blue"
+        ))
+
+        console.print()
+        console.print("[dim]Note: These are rough estimates. Actual usage may vary based on document content and model responses.[/dim]")
+
+    except Exception as e:
+        console.print(f"[bold red]✗[/bold red] Error: {e}")
+        raise typer.Exit(1)
 
 
 @app.command("version")
@@ -448,7 +510,7 @@ def main() -> None:
     # If first arg looks like a path (not a command), assume it's 'run'
     if len(sys.argv) > 1:
         first_arg = sys.argv[1]
-        commands = ["run", "version", "validate", "init", "stages"]
+        commands = ["run", "version", "validate", "init", "stages", "estimate"]
         if not first_arg.startswith("-") and first_arg not in commands:
             sys.argv = [sys.argv[0], "run"] + sys.argv[1:]
 

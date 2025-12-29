@@ -11,7 +11,7 @@ to populate a final dataset with the following columns:
 1) question                (str)  - The actual question text.
 2) ground_truth_answer     (str)  - The supposed correct answer to the question.
 3) question_category       (str)  - A label or taxonomy describing the question type.
-4) kind                    (str)  - Either "single_shot" or "multi_hop".
+4) kind                    (str)  - Either "single_hop" or "multi_hop".
 5) estimated_difficulty    (int)  - Estimated difficulty (1-10).
 6) citations               (List[str]) - List of source citations or references.
 7) document_id             (str)  - The ID of the document from which the question is derived.
@@ -25,7 +25,7 @@ Configuration Example:
 pipeline:
   lighteval:
     run: true
-    single_shot_subset: single_shot_questions_deduplicated
+    single_hop_subset: single_hop_questions_deduplicated
     multi_hop_subset: multi_hop_questions_deduplicated
     chunked_subset: chunked_documents
     output_subset: lighteval
@@ -33,7 +33,7 @@ pipeline:
 Usage:
 ------
 1. Load single-shot and multi-hop question subsets.
-2. Merge them into a single dataset, marking 'kind' as "single_shot" or "multi_hop."
+2. Merge them into a single dataset, marking 'kind' as "single_hop" or "multi_hop."
 3. For each question row, look up the relevant chunks in the chunked dataset to
    populate 'chunks' and the full 'document' text.
 4. Save final dataset to HF or local path as configured.
@@ -88,7 +88,7 @@ def _run_impl(config) -> None:
     logger.info("Saving lighteval compatible dataset")
 
     # Use configurable subset names with fallbacks
-    single_shot_subset = stage_cfg.single_shot_subset
+    single_hop_subset = stage_cfg.single_hop_subset
     multi_hop_subset = stage_cfg.multi_hop_subset
     cross_doc_subset = stage_cfg.cross_doc_subset
     chunked_subset = stage_cfg.chunked_subset
@@ -97,11 +97,11 @@ def _run_impl(config) -> None:
 
     # Load datasets
     try:
-        single_shot_ds = custom_load_dataset(config=config, subset=single_shot_subset)
-        logger.info(f"Loaded single-shot Q subset with {len(single_shot_ds)} rows.")
+        single_hop_ds = custom_load_dataset(config=config, subset=single_hop_subset)
+        logger.info(f"Loaded single-shot Q subset with {len(single_hop_ds)} rows.")
     except Exception as e:
         logger.warning(f"Could not load single-shot subset: {e}")
-        single_shot_ds = Dataset.from_dict({})
+        single_hop_ds = Dataset.from_dict({})
 
     try:
         multi_hop_ds = custom_load_dataset(config=config, subset=multi_hop_subset)
@@ -132,7 +132,7 @@ def _run_impl(config) -> None:
         logger.error(f"Could not load summarized subset: {e}")
         summarized_ds = Dataset.from_dict({})
 
-    if len(single_shot_ds) == 0 and len(multi_hop_ds) == 0 and len(cross_doc_ds) == 0:
+    if len(single_hop_ds) == 0 and len(multi_hop_ds) == 0 and len(cross_doc_ds) == 0:
         logger.warning(
             "No data in single-shot, multi-hop, or cross-document datasets. Creating empty prepared_lighteval subset."
         )
@@ -172,7 +172,7 @@ def _run_impl(config) -> None:
             doc_meta_map[doc_id].update({"document_summary": row.get("document_summary")})
 
     # Helper functions to transform a row
-    def make_single_shot_record(row: Dict[str, Any]) -> Dict[str, Any]:
+    def make_single_hop_record(row: Dict[str, Any]) -> Dict[str, Any]:
         doc_id = row.get("document_id", "")
         chunk_id = row.get("chunk_id", "")
 
@@ -187,7 +187,7 @@ def _run_impl(config) -> None:
         if not gold:
             logger.warning("Row has empty answer line")
 
-        stage_cfg_local = config.pipeline.single_shot_question_generation
+        stage_cfg_local = config.pipeline.single_hop_question_generation
         gold = (
             [ord(gold) - ord("A")]
             if stage_cfg_local.question_mode == "multi-choice" and gold
@@ -203,7 +203,7 @@ def _run_impl(config) -> None:
             "gold": gold,
             "choices": row.get("choices", []),
             "question_category": row.get("self_assessed_question_type", "unknown"),
-            "kind": "single_shot",
+            "kind": "single_hop",
             "estimated_difficulty": row.get("estimated_difficulty", 5),
             "citations": row.get("citations", []),
             "document_id": doc_id,
@@ -300,7 +300,7 @@ def _run_impl(config) -> None:
 
     # Final combination
     combined_records = (
-        [make_single_shot_record(row) for row in single_shot_ds]
+        [make_single_hop_record(row) for row in single_hop_ds]
         + [make_multi_hop_record(row) for row in multi_hop_ds]
         + [make_cross_document_record(row) for row in cross_doc_ds]
     )

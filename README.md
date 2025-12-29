@@ -90,7 +90,7 @@ pipeline:
     source_documents_dir: ./my-documents
   summarization:
   chunking:
-  single_shot_question_generation:
+  single_hop_question_generation:
   prepare_lighteval:
 ```
 
@@ -102,7 +102,7 @@ yourbench run config.yaml
 
 ```yaml
 pipeline:
-  single_shot_question_generation:
+  single_hop_question_generation:
     question_schema: ./my_schema.py  # Must export DataFormat class
 ```
 

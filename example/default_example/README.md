@@ -9,4 +9,4 @@ This is a simple example which generates 20 questions using the `kimi-k2` model 
 yourbench run example/default_example/config.yaml
 ```
 
-The expected result from this run can be found at the following huggingface dataset: [yourbench/yourbench-simple-example](https://huggingface.co/datasets/yourbench/yourbench-simple-example/viewer/single_shot_questions?views%5B%5D=single_shot_questions)
+The expected result from this run can be found at the following huggingface dataset: [yourbench/yourbench-simple-example](https://huggingface.co/datasets/yourbench/yourbench-simple-example/viewer/single_hop_questions?views%5B%5D=single_hop_questions)

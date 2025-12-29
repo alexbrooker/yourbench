@@ -98,7 +98,7 @@ model_list:
 Now we configure each stage of the pipeline.
 
 > [!NOTE]
-> We are only generating questions from a single chunk here using `single_shot_question_generation` stage. There are two modes in YourBench: `multi-choice` and `open-ended`.
+> We are only generating questions from a single chunk here using `single_hop_question_generation` stage. There are two modes in YourBench: `multi-choice` and `open-ended`.
 > - `multi-choice` mode: Generate multiple-choice questions from each chunk (includes the correct choice and the incorrect choices).
 > - `open-ended` mode: Generate open-ended questions from each chunk (and the expected correct answer).
 
@@ -115,7 +115,7 @@ pipeline:
     l_max_tokens: 1024        # Maximum number of tokens per chunk
     token_overlap: 256        # Token overlap between chunks
   
-  single_shot_question_generation:
+  single_hop_question_generation:
     question_mode: multi-choice
 ```
 
@@ -150,18 +150,18 @@ We will notice that our dataset is made of several subsets. Each corresponds to 
 - ingested
 - summarized
 - chunked
-- single_shot_questions
+- single_hop_questions
 
 To load the dataset that we just uploaded to the hub, we use `load_dataset` from the `datasets` library, and specify which subset we want to load with the parameter `name`:
 
 ```python
 from datasets import load_dataset
-harry_potter_quizz = load_dataset("your_hf_organization/harry-potter-quizz", name='single_shot_questions')
+harry_potter_quizz = load_dataset("your_hf_organization/harry-potter-quizz", name='single_hop_questions')
 ```
 
-#### Understand the `single_shot_questions` subset
+#### Understand the `single_hop_questions` subset
 
-The `single_shot_questions` subset contains the following relevant columns for our multiple-choice quiz use case:
+The `single_hop_questions` subset contains the following relevant columns for our multiple-choice quiz use case:
 
 - `question`: The question generated, for instance: *What is Professor Snape's true intention during Harry's first Quidditch match?*
 - `choices`: A list of choices generated, for instance: ['(A) He is trying to protect Harry by jinxing his broom.', '(B) He wants to sabotage Harry so Gryffindor will lose.', '(C) He is unaware of the match and does nothing.', "(D) He is testing Harry's flying skills."] 

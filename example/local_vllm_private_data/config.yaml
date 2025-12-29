@@ -16,7 +16,7 @@ pipeline:
     output_dir: example/local_vllm_private_data/processed
   summarization:
   chunking:
-  single_shot_question_generation:
+  single_hop_question_generation:
     additional_instructions: "Ask generalizable questions."
   multi_hop_question_generation:
     additional_instructions: "Ask generalizable questions."

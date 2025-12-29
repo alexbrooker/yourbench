@@ -49,11 +49,11 @@ Even if you don't use the `multi_hop_questions` stage, the `chunked` dataset is 
 
 </details>
 
-### Understand the `single_shot_questions` subset
+### Understand the `single_hop_questions` subset
 <details>
 <summary>See more</summary>
 
-The single_shot_questions dataset contains the same columns as the `chunked` dataset, plus the following:
+The single_hop_questions dataset contains the same columns as the `chunked` dataset, plus the following:
 - `document_id`: The ID of the document that the question was generated from
 - `additional_instructions`: The additional instructions that were given to the LLM for single-hop question generation (if any, otherwise it's empty)
 - `question`: The single-hop question generated, a question that can be answered using only the content of the chunk. For instance: *What is Professor Snape's true intention during Harry's first Quidditch match?*
@@ -77,7 +77,7 @@ The following columns are present but empty. These are placeholder columns for t
 - `question_rewriting_rationale`: None
 - `raw_question_rewriting_response`: None
 
-The number of rows in the `single_shot_questions` subset depends on the number of questions generated from all chunks across all documents.
+The number of rows in the `single_hop_questions` subset depends on the number of questions generated from all chunks across all documents.
 
 </details>
 
@@ -85,7 +85,7 @@ The number of rows in the `single_shot_questions` subset depends on the number o
 <details>
 <summary>See more</summary>
 
-The multi_hop_questions dataset contains the same base columns as the `single_shot_questions` dataset, but with some key differences:
+The multi_hop_questions dataset contains the same base columns as the `single_hop_questions` dataset, but with some key differences:
 
 - `question`: The multi-hop question generated, a question that requires reasoning across multiple chunks within the same document. For instance: *"How does Professor Snape's behavior during Harry's first Quidditch match relate to his later actions in protecting Harry throughout the series?"*
 
@@ -111,7 +111,7 @@ Cross-document questions test the ability to reason and make connections across 
 <details>
 <summary>See more</summary>
 
-The `prepared_lighteval` dataset combines questions from all generation stages (`single_shot_questions`, `multi_hop_questions`, `cross_document_questions`) into a unified evaluation format.
+The `prepared_lighteval` dataset combines questions from all generation stages (`single_hop_questions`, `multi_hop_questions`, `cross_document_questions`) into a unified evaluation format.
 
 The `prepared_lighteval` dataset contains the following columns:
 
@@ -124,7 +124,7 @@ The `prepared_lighteval` dataset contains the following columns:
 
 **Question Metadata:**
 - `question_category`: The type/category of question (mapped from `self_assessed_question_type` in source subsets)
-- `kind`: Identifies the question type as one of: `"single_shot"`, `"multi_hop"`, or `"cross_document"`
+- `kind`: Identifies the question type as one of: `"single_hop"`, `"multi_hop"`, or `"cross_document"`
 - `estimated_difficulty`: Difficulty level on a 1-10 scale
 - `question_generating_model`: The model used to generate the question
 
