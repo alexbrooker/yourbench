@@ -116,6 +116,21 @@ class DataFormat(BaseModel):
     difficulty: str = Field(description="easy, medium, or hard")
 ```
 
+## CLI Commands
+
+YourBench provides several CLI commands:
+
+| Command | Description |
+|---------|-------------|
+| `yourbench run <config>` | Run the full pipeline |
+| `yourbench validate <config>` | Check config without running |
+| `yourbench estimate <config>` | Estimate token usage |
+| `yourbench init` | Generate starter config interactively |
+| `yourbench stages` | List available pipeline stages |
+| `yourbench version` | Show version |
+
+See [CLI Reference](./docs/CLI.md) for full documentation.
+
 ## Documentation
 
 | Guide | Description |
@@ -123,6 +138,7 @@ class DataFormat(BaseModel):
 | [Configuration](./docs/CONFIGURATION.md) | Full config reference with all options |
 | [Custom Schemas](./docs/CUSTOM_SCHEMAS.md) | Define your own output formats |
 | [How It Works](./docs/PRINCIPLES.md) | Pipeline architecture and stages |
+| [CLI Reference](./docs/CLI.md) | All CLI commands and options |
 | [FAQ](./docs/FAQ.md) | Common questions and troubleshooting |
 | [OpenAI-Compatible Models](./docs/USING_OPENAI_COMPATIBLE_MODELS.md) | Use vLLM, Ollama, etc. |
 | [Dataset Columns](./docs/DATASET_COLUMNS_DESCRIPTION.md) | Output field descriptions |
