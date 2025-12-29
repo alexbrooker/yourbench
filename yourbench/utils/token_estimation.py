@@ -167,6 +167,7 @@ def estimate_pipeline_tokens(config: "YourbenchConfig") -> dict:
 
     Runs actual ingestion (non-LLM) and chunking simulation for accurate estimates.
     Returns detailed breakdown of estimated input/output tokens per stage.
+    Output tokens are given as a range (25th-75th percentile estimates).
     """
     from yourbench.conf.loader import get_enabled_stages
 
@@ -176,8 +177,10 @@ def estimate_pipeline_tokens(config: "YourbenchConfig") -> dict:
         "num_chunks": 0,
         "stages": {},
         "total_input_tokens": 0,
-        "total_output_tokens": 0,
-        "total_tokens": 0,
+        "total_output_tokens_low": 0,
+        "total_output_tokens_high": 0,
+        "total_tokens_low": 0,
+        "total_tokens_high": 0,
     }
 
     enabled = get_enabled_stages(config)
@@ -214,17 +217,20 @@ def estimate_pipeline_tokens(config: "YourbenchConfig") -> dict:
     num_multihop_combos = max(1, num_chunks // max(1, num_multihops_factor))
 
     total_input = 0
-    total_output = 0
+    total_output_low = 0
+    total_output_high = 0
 
     # Stage-by-stage estimation with actual data
     for stage in enabled:
-        stage_est = {"input_tokens": 0, "output_tokens": 0, "calls": 0}
+        stage_est = {"input_tokens": 0, "output_tokens_low": 0, "output_tokens_high": 0, "calls": 0}
 
         if stage == "ingestion":
             if use_llm:
                 # LLM ingestion processes each file
                 stage_est["input_tokens"] = source_tokens
-                stage_est["output_tokens"] = source_tokens
+                # Output is similar to input for ingestion
+                stage_est["output_tokens_low"] = int(source_tokens * 0.8)
+                stage_est["output_tokens_high"] = int(source_tokens * 1.2)
                 stage_est["calls"] = ingestion_result["file_count"]
             else:
                 stage_est["note"] = "No LLM calls (text extraction only)"
@@ -233,7 +239,9 @@ def estimate_pipeline_tokens(config: "YourbenchConfig") -> dict:
             max_tokens = config.pipeline.summarization.max_tokens
             summary_chunks = max(1, source_tokens // max_tokens)
             stage_est["input_tokens"] = source_tokens + summary_chunks * 500
-            stage_est["output_tokens"] = summary_chunks * 2000
+            # Summaries are typically 10-30% of input
+            stage_est["output_tokens_low"] = int(source_tokens * 0.10)
+            stage_est["output_tokens_high"] = int(source_tokens * 0.30)
             stage_est["calls"] = summary_chunks
 
         elif stage == "chunking":
@@ -244,7 +252,10 @@ def estimate_pipeline_tokens(config: "YourbenchConfig") -> dict:
             avg_chunk_tokens = sum(c["tokens"] for c in chunks) // max(1, num_chunks)
             prompt_overhead = 1000
             stage_est["input_tokens"] = num_chunks * (avg_chunk_tokens + prompt_overhead)
-            stage_est["output_tokens"] = num_chunks * 1500
+            # Question generation output is 25-75% of chunk content
+            base_content = num_chunks * avg_chunk_tokens
+            stage_est["output_tokens_low"] = int(base_content * 0.25)
+            stage_est["output_tokens_high"] = int(base_content * 0.75)
             stage_est["calls"] = num_chunks
 
         elif stage == "multi_hop_question_generation":
@@ -252,7 +263,10 @@ def estimate_pipeline_tokens(config: "YourbenchConfig") -> dict:
             avg_chunk_tokens = sum(c["tokens"] for c in chunks) // max(1, num_chunks)
             prompt_overhead = 1000
             stage_est["input_tokens"] = num_multihop_combos * (avg_chunk_tokens * avg_hops + prompt_overhead)
-            stage_est["output_tokens"] = num_multihop_combos * 1500
+            # Multi-hop generates more content: 30-80% of combined chunks
+            base_content = num_multihop_combos * avg_chunk_tokens * avg_hops
+            stage_est["output_tokens_low"] = int(base_content * 0.30)
+            stage_est["output_tokens_high"] = int(base_content * 0.80)
             stage_est["calls"] = num_multihop_combos
 
         elif stage == "cross_document_question_generation":
@@ -262,13 +276,18 @@ def estimate_pipeline_tokens(config: "YourbenchConfig") -> dict:
             avg_chunk_tokens = sum(c["tokens"] for c in chunks) // max(1, num_chunks)
             prompt_overhead = 1000
             stage_est["input_tokens"] = max_combos * (avg_chunk_tokens * docs_per_combo + prompt_overhead)
-            stage_est["output_tokens"] = max_combos * 1500
+            # Cross-doc generates 30-80% of combined content
+            base_content = max_combos * avg_chunk_tokens * docs_per_combo
+            stage_est["output_tokens_low"] = int(base_content * 0.30)
+            stage_est["output_tokens_high"] = int(base_content * 0.80)
             stage_est["calls"] = max_combos
 
         elif stage == "question_rewriting":
             estimated_questions = num_chunks * 3
             stage_est["input_tokens"] = estimated_questions * 500
-            stage_est["output_tokens"] = estimated_questions * 300
+            # Rewriting output is similar to input: 50-100%
+            stage_est["output_tokens_low"] = int(stage_est["input_tokens"] * 0.50)
+            stage_est["output_tokens_high"] = int(stage_est["input_tokens"] * 1.00)
             stage_est["calls"] = estimated_questions
 
         elif stage == "prepare_lighteval":
@@ -279,11 +298,14 @@ def estimate_pipeline_tokens(config: "YourbenchConfig") -> dict:
 
         result["stages"][stage] = stage_est
         total_input += stage_est.get("input_tokens", 0)
-        total_output += stage_est.get("output_tokens", 0)
+        total_output_low += stage_est.get("output_tokens_low", 0)
+        total_output_high += stage_est.get("output_tokens_high", 0)
 
     result["total_input_tokens"] = total_input
-    result["total_output_tokens"] = total_output
-    result["total_tokens"] = total_input + total_output
+    result["total_output_tokens_low"] = total_output_low
+    result["total_output_tokens_high"] = total_output_high
+    result["total_tokens_low"] = total_input + total_output_low
+    result["total_tokens_high"] = total_input + total_output_high
 
     return result
 
@@ -295,3 +317,8 @@ def format_token_count(tokens: int) -> str:
     elif tokens >= 1_000:
         return f"{tokens / 1_000:.1f}K"
     return str(tokens)
+
+
+def format_token_range(low: int, high: int) -> str:
+    """Format a token range with K/M suffix."""
+    return f"{format_token_count(low)} - {format_token_count(high)}"
