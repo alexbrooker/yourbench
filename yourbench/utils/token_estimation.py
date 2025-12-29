@@ -1,11 +1,11 @@
 """Token estimation utilities using tiktoken."""
 
-import os
-from pathlib import Path
 from typing import TYPE_CHECKING
+from pathlib import Path
 
 import tiktoken
 from loguru import logger
+
 
 if TYPE_CHECKING:
     from yourbench.conf.schema import YourbenchConfig

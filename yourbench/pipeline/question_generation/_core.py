@@ -9,8 +9,8 @@ from yourbench.utils.chunking_utils import get_sampling_cfg
 from yourbench.utils.dataset_engine import custom_load_dataset, custom_save_dataset
 from yourbench.utils.parsing_engine import (
     parse_multi_hop_responses,
-    _remove_duplicate_questions,
     parse_single_hop_responses,
+    _remove_duplicate_questions,
 )
 from yourbench.utils.prompt_builder import build_system_prompt
 from yourbench.utils.logging_context import log_step, log_stage

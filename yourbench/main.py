@@ -462,17 +462,21 @@ def estimate(
         console.print()
 
         # Totals
-        console.print(Panel.fit(
-            f"[bold]Total Estimated Usage:[/bold]\n"
-            f"  Input tokens:  [green]{format_token_count(estimates['total_input_tokens'])}[/green]\n"
-            f"  Output tokens: [yellow]{format_token_count(estimates['total_output_tokens'])}[/yellow]\n"
-            f"  Total:         [bold cyan]{format_token_count(estimates['total_tokens'])}[/bold cyan]",
-            title="Summary",
-            border_style="blue"
-        ))
+        console.print(
+            Panel.fit(
+                f"[bold]Total Estimated Usage:[/bold]\n"
+                f"  Input tokens:  [green]{format_token_count(estimates['total_input_tokens'])}[/green]\n"
+                f"  Output tokens: [yellow]{format_token_count(estimates['total_output_tokens'])}[/yellow]\n"
+                f"  Total:         [bold cyan]{format_token_count(estimates['total_tokens'])}[/bold cyan]",
+                title="Summary",
+                border_style="blue",
+            )
+        )
 
         console.print()
-        console.print("[dim]Note: These are rough estimates. Actual usage may vary based on document content and model responses.[/dim]")
+        console.print(
+            "[dim]Note: These are rough estimates. Actual usage may vary based on document content and model responses.[/dim]"
+        )
 
     except Exception as e:
         console.print(f"[bold red]✗[/bold red] Error: {e}")
