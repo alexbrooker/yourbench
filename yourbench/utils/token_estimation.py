@@ -122,13 +122,11 @@ def run_estimation_ingestion(
         content = _extract_file_content(file_path, processor)
         if content:
             tokens = count_tokens(content)
-            documents.append(
-                {
-                    "file_path": str(file_path),
-                    "content": content,
-                    "tokens": tokens,
-                }
-            )
+            documents.append({
+                "file_path": str(file_path),
+                "content": content,
+                "tokens": tokens,
+            })
             total_tokens += tokens
 
     return {
@@ -155,13 +153,11 @@ def simulate_chunking(documents: list[dict], chunk_max_tokens: int) -> list[dict
         doc_chunks = split_into_token_chunks(content, chunk_max_tokens, overlap=0)
         for i, chunk_text in enumerate(doc_chunks):
             chunk_tokens = count_tokens(chunk_text)
-            chunks.append(
-                {
-                    "doc_path": doc.get("file_path", ""),
-                    "chunk_index": i,
-                    "tokens": chunk_tokens,
-                }
-            )
+            chunks.append({
+                "doc_path": doc.get("file_path", ""),
+                "chunk_index": i,
+                "tokens": chunk_tokens,
+            })
 
     return chunks
 
