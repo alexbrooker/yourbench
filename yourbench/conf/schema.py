@@ -146,9 +146,9 @@ class SingleShotConfig(BaseModel):
     run: bool = False
     question_mode: str = "open-ended"
     additional_instructions: str = ""
-    single_shot_system_prompt: str = ""
-    single_shot_system_prompt_multi: str = ""
-    single_shot_user_prompt: str = ""
+    single_hop_system_prompt: str = ""
+    single_hop_system_prompt_multi: str = ""
+    single_hop_user_prompt: str = ""
     chunk_sampling: ChunkSamplingConfig = Field(default_factory=ChunkSamplingConfig)
 
     question_schema: str | None = None
@@ -246,7 +246,7 @@ class LightevalConfig(BaseModel):
     """Lighteval preparation configuration."""
 
     run: bool = False
-    single_shot_subset: str = "single_shot_questions"
+    single_hop_subset: str = "single_hop_questions"
     multi_hop_subset: str = "multi_hop_questions"
     cross_doc_subset: str = "cross_document_questions"
     chunked_subset: str = "chunked"
@@ -281,7 +281,7 @@ class PipelineConfig(BaseModel):
     ingestion: IngestionConfig = Field(default_factory=IngestionConfig)
     summarization: SummarizationConfig = Field(default_factory=SummarizationConfig)
     chunking: ChunkingConfig = Field(default_factory=ChunkingConfig)
-    single_shot_question_generation: SingleShotConfig = Field(default_factory=SingleShotConfig)
+    single_hop_question_generation: SingleShotConfig = Field(default_factory=SingleShotConfig)
     multi_hop_question_generation: MultiHopConfig = Field(default_factory=MultiHopConfig)
     cross_document_question_generation: CrossDocConfig = Field(default_factory=CrossDocConfig)
     question_rewriting: QuestionRewritingConfig = Field(default_factory=QuestionRewritingConfig)

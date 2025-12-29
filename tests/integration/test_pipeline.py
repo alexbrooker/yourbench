@@ -49,7 +49,7 @@ def mock_config(temp_dir):
             "ingestion": ["fake_model"],
             "summarization": ["fake_model"],
             "chunking": ["fake_model"],
-            "single_shot_question_generation": ["fake_model"],
+            "single_hop_question_generation": ["fake_model"],
             "multi_hop_question_generation": ["fake_model"],
         },
         "pipeline": {
@@ -79,13 +79,13 @@ def mock_config(temp_dir):
                 "token_overlap": 512,
                 "encoding_name": "cl100k_base",
             },
-            "single_shot_question_generation": {
+            "single_hop_question_generation": {
                 "run": True,
                 "question_mode": "open-ended",
                 "additional_instructions": "Generate questions to test a curious adult",
-                "single_shot_system_prompt": "You are a helpful assistant.",
-                "single_shot_system_prompt_multi": "You are a helpful assistant.",
-                "single_shot_user_prompt": "",
+                "single_hop_system_prompt": "You are a helpful assistant.",
+                "single_hop_system_prompt_multi": "You are a helpful assistant.",
+                "single_hop_user_prompt": "",
                 "chunk_sampling": {
                     "enable": False,
                     "num_samples": 100,
@@ -105,7 +105,7 @@ def mock_config(temp_dir):
             "question_rewriting": {"run": False},
             "prepare_lighteval": {
                 "run": True,
-                "single_shot_subset": "single_shot_questions",
+                "single_hop_subset": "single_hop_questions",
                 "multi_hop_subset": "multi_hop_questions",
                 "cross_doc_subset": "cross_document_questions",
                 "chunked_subset": "chunked",
@@ -209,7 +209,7 @@ def test_chunking_stage(mock_config):
         assert mock_save.call_args[1]["subset"] == "chunked"
 
 
-def test_single_shot_question_generation_stage(mock_config):
+def test_single_hop_question_generation_stage(mock_config):
     """Test the single-shot question generation stage."""
     chunks = [{"chunk_id": "chunk1", "chunk_text": "This is chunk 1"}]
     mock_dataset = Dataset.from_dict({
@@ -238,9 +238,9 @@ def test_single_shot_question_generation_stage(mock_config):
             }
         ]
 
-        from yourbench.pipeline.question_generation import run_single_shot
+        from yourbench.pipeline.question_generation import run_single_hop
 
-        run_single_shot(mock_config)
+        run_single_hop(mock_config)
 
         mock_run_inference.assert_called_once()
         mock_parse.assert_called_once()
@@ -249,7 +249,7 @@ def test_single_shot_question_generation_stage(mock_config):
 
 def test_lighteval_stage(mock_config):
     """Test the lighteval stage."""
-    single_shot_ds = Dataset.from_dict({
+    single_hop_ds = Dataset.from_dict({
         "document_id": ["doc1"],
         "chunk_id": ["chunk1"],
         "question": ["Single-shot question?"],
@@ -297,7 +297,7 @@ def test_lighteval_stage(mock_config):
 
         def load_dataset_side_effect(config, subset):
             return {
-                "single_shot_questions": single_shot_ds,
+                "single_hop_questions": single_hop_ds,
                 "multi_hop_questions": multi_hop_ds,
                 "chunked": chunked_ds,
                 "summarized": summarized_ds,

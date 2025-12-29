@@ -10,5 +10,5 @@ pipeline:
     output_dir: example/default_example/processed
   summarization:
   chunking:
-  single_shot_question_generation:
+  single_hop_question_generation:
   prepare_lighteval:

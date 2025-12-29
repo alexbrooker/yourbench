@@ -50,7 +50,7 @@ pipeline:
     source_documents_dir: data/raw
   summarization:
   chunking:
-  single_shot_question_generation:
+  single_hop_question_generation:
   prepare_lighteval:
 ```
 
@@ -77,7 +77,7 @@ pipeline:
   ingestion:
     source_documents_dir: example/default_example/data
   chunking:
-  single_shot_question_generation:
+  single_hop_question_generation:
   prepare_lighteval:
 ```
 
@@ -138,7 +138,7 @@ pipeline:
     max_tokens: 32768                 # Max tokens per summary chunk
   chunking:
     l_max_tokens: 8192               # Max tokens per chunk
-  single_shot_question_generation:
+  single_hop_question_generation:
     question_mode: open-ended         # or multi-choice
   prepare_lighteval:                  # Just include to enable
 ```
@@ -198,12 +198,12 @@ Generate questions from document chunks. Three types are available:
 
 ```yaml
 pipeline:
-  single_shot_question_generation:
+  single_hop_question_generation:
     question_mode: open-ended       # or multi-choice
     additional_instructions: ""     # Extra context for LLM
     question_schema: path/to/schema.py  # Optional: custom output format
-    single_shot_system_prompt: path/to/prompt.md
-    single_shot_user_prompt: path/to/prompt.md
+    single_hop_system_prompt: path/to/prompt.md
+    single_hop_user_prompt: path/to/prompt.md
     chunk_sampling:
       enable: false
       num_samples: 100
@@ -310,7 +310,7 @@ Define custom output formats for generated questions using Pydantic models.
 **Config:**
 ```yaml
 pipeline:
-  single_shot_question_generation:
+  single_hop_question_generation:
     question_schema: ./schemas/my_schema.py
 ```
 
@@ -355,7 +355,7 @@ model_list:
 model_roles:
   ingestion: [gpt-4]
   summarization: [gpt-4]
-  single_shot_question_generation: [claude-3-opus]
+  single_hop_question_generation: [claude-3-opus]
   multi_hop_question_generation: [claude-3-opus]
 ```
 
@@ -377,7 +377,7 @@ pipeline:
     source_documents_dir: data/raw
   summarization:
   chunking:
-  single_shot_question_generation:
+  single_hop_question_generation:
   prepare_lighteval:
 ```
 
@@ -414,7 +414,7 @@ pipeline:
     h_min: 2
     h_max: 5
 
-  single_shot_question_generation:
+  single_hop_question_generation:
     question_mode: open-ended
     additional_instructions: "Focus on technical details"
 
@@ -447,7 +447,7 @@ pipeline:
   ingestion:
     source_documents_dir: data/raw
   chunking:
-  single_shot_question_generation:
+  single_hop_question_generation:
     question_schema: ./schemas/technical.py
     additional_instructions: "Focus on implementation details"
   prepare_lighteval:
@@ -470,6 +470,6 @@ pipeline:
     source_documents_dir: data/raw
   summarization:
   chunking:
-  single_shot_question_generation:
+  single_hop_question_generation:
   prepare_lighteval:
 ```

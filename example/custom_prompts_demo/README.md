@@ -8,7 +8,7 @@ This example demonstrates how to customize question generation using your own sy
 
 ## What's Included
 
-- `custom_prompts/single_shot_system_prompt.md` - Kid-friendly question generator
+- `custom_prompts/single_hop_system_prompt.md` - Kid-friendly question generator
 - `custom_prompts/multi_hop_system_prompt.md` - Multi-hop reasoning for children
 - `data/` - Sample children's book PDFs
 
@@ -32,8 +32,8 @@ To create your own custom prompts:
 
 ```yaml
 pipeline:
-  single_shot_question_generation:
-    single_shot_system_prompt: path/to/your/prompt.md
+  single_hop_question_generation:
+    single_hop_system_prompt: path/to/your/prompt.md
 ```
 
 ## See Also

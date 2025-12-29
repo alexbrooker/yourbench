@@ -257,7 +257,7 @@ def run(config) -> None:
     additional_instructions = stage_cfg.additional_instructions
 
     question_types_to_process = {
-        "single-hop": ("single_shot_questions", "single_shot_questions_rewritten"),
+        "single-hop": ("single_hop_questions", "single_hop_questions_rewritten"),
         "multi-hop": ("multi_hop_questions", "multi_hop_questions_rewritten"),
     }
 

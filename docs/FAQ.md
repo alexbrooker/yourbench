@@ -133,7 +133,7 @@ model_roles:
   summarization:
     - gpt-4.1
     - Qwen/Qwen3-30B-A3B
-  single_shot_question_generation:
+  single_hop_question_generation:
     - gpt-4.1
 ```
 YourBench will run inference calls in parallel for each model assigned.
@@ -184,7 +184,7 @@ The results strongly correlated with the original MMLU in ranking models, but th
 
 ## 10. Where Are My Final Questions Stored?
 
-- After single-shot or multi-hop generation, your “raw” question datasets appear under subset names like `single_shot_questions`, `multi_hop_questions`.
+- After single-shot or multi-hop generation, your “raw” question datasets appear under subset names like `single_hop_questions`, `multi_hop_questions`.
 - The pipeline’s `lighteval` stage merges them into a single dataset called `lighteval`, containing columns like `question`, `ground_truth_answer`, `citations`, and the associated chunk(s).
 - By default, these subsets are saved on the HF Hub (under your designated dataset name) and/or locally, depending on your config.
 

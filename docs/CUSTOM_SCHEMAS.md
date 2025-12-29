@@ -20,7 +20,7 @@ class DataFormat(BaseModel):
 
 ```yaml
 pipeline:
-  single_shot_question_generation:
+  single_hop_question_generation:
     question_schema: ./schemas/my_schema.py
 ```
 

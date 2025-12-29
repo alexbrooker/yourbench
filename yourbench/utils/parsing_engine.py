@@ -371,7 +371,7 @@ def normalize_multi_choice(pair: dict[str, Any]) -> Optional[dict[str, Any]]:
     return pair
 
 
-def parse_single_shot_responses(responses, index_map, stage_cfg):
+def parse_single_hop_responses(responses, index_map, stage_cfg):
     rows = []
     question_mode = (
         str(

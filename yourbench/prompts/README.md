@@ -12,9 +12,9 @@ This directory contains all the prompt templates used throughout the YourBench p
   - `combine_summaries_user_prompt.md` - Prompt for combining multiple summaries
 
 - `question_generation/` - Prompts for generating questions
-  - `single_shot_system_prompt.md` - System prompt for single-hop open-ended questions
-  - `single_shot_system_prompt_multi.md` - System prompt for single-hop multiple-choice questions
-  - `single_shot_user_prompt.md` - User prompt for single-hop questions
+  - `single_hop_system_prompt.md` - System prompt for single-hop open-ended questions
+  - `single_hop_system_prompt_multi.md` - System prompt for single-hop multiple-choice questions
+  - `single_hop_user_prompt.md` - User prompt for single-hop questions
   - `multi_hop_system_prompt.md` - System prompt for multi-hop questions
   - `multi_hop_user_prompt.md` - User prompt for multi-hop questions
 

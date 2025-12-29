@@ -16,5 +16,5 @@ pipeline:
   chunking:
     l_max_tokens: 1024      # Maximum chunk size
     token_overlap: 256      # Overlap between chunks
-  single_shot_question_generation:
+  single_hop_question_generation:
     question_mode: multi-choice # or open-ended
