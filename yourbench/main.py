@@ -430,7 +430,11 @@ def estimate(
         raise typer.Exit(1)
 
     from yourbench.conf.loader import load_config
-    from yourbench.utils.token_estimation import format_token_count, estimate_pipeline_tokens
+    from yourbench.utils.token_estimation import (
+        format_token_count,
+        format_token_range,
+        estimate_pipeline_tokens,
+    )
 
     try:
         with console.status("[bold cyan]Analyzing configuration..."):
@@ -447,13 +451,15 @@ def estimate(
         table = Table(title="Token Estimation by Stage", show_header=True, header_style="bold magenta")
         table.add_column("Stage", style="cyan")
         table.add_column("Input Tokens", style="green", justify="right")
-        table.add_column("Output Tokens", style="yellow", justify="right")
+        table.add_column("Output Tokens (25%-75%)", style="yellow", justify="right")
         table.add_column("API Calls", style="blue", justify="right")
         table.add_column("Notes", style="dim")
 
         for stage, info in estimates["stages"].items():
             input_tok = format_token_count(info.get("input_tokens", 0)) if info.get("input_tokens") else "-"
-            output_tok = format_token_count(info.get("output_tokens", 0)) if info.get("output_tokens") else "-"
+            out_low = info.get("output_tokens_low", 0)
+            out_high = info.get("output_tokens_high", 0)
+            output_tok = format_token_range(out_low, out_high) if out_low or out_high else "-"
             calls = str(info.get("calls", "-")) if info.get("calls") else "-"
             note = info.get("note", "")
             table.add_row(stage.replace("_", " ").title(), input_tok, output_tok, calls, note)
@@ -466,8 +472,8 @@ def estimate(
             Panel.fit(
                 f"[bold]Total Estimated Usage:[/bold]\n"
                 f"  Input tokens:  [green]{format_token_count(estimates['total_input_tokens'])}[/green]\n"
-                f"  Output tokens: [yellow]{format_token_count(estimates['total_output_tokens'])}[/yellow]\n"
-                f"  Total:         [bold cyan]{format_token_count(estimates['total_tokens'])}[/bold cyan]",
+                f"  Output tokens: [yellow]{format_token_range(estimates['total_output_tokens_low'], estimates['total_output_tokens_high'])}[/yellow]\n"
+                f"  Total:         [bold cyan]{format_token_range(estimates['total_tokens_low'], estimates['total_tokens_high'])}[/bold cyan]",
                 title="Summary",
                 border_style="blue",
             )
