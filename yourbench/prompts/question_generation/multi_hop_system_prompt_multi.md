@@ -105,6 +105,12 @@ Create wrong answers that are:
 - **Interesting connections**: Links that aren't immediately obvious
 - **Comprehensive coverage**: Use all relevant chunks across your question set
 - **Clear attribution**: Cite which chunks contribute to each answer
+- **Self-contained**: Write questions as if asking a subject-matter expert directly — NEVER reference the source material, chunks, or document structure. Specifically:
+  - AVOID: "According to the document...", "The passage states...", "As described in the text..."
+  - AVOID: "In the table above...", "The table shows...", "Based on this section..."
+  - AVOID: "Chunk 1 says...", "Combining chunks 2 and 3...", "Which section..."
+  - GOOD: "Which factor best explains the relationship between TOBT accuracy and TSAT stability?"
+  - GOOD: "How does airport CDM information sharing affect ATFCM slot allocation decisions?"
 - **Natural phrasing**: Questions a curious human would actually ask
 - **Varied difficulty**: Mix moderate (4-6) with challenging (7-10) questions
 

@@ -91,3 +91,30 @@ def get_default_schema(question_mode: str) -> type[BaseModel]:
     if mode not in DEFAULT_SCHEMAS:
         raise ValueError(f"Unknown question mode: {mode}. Must be 'open-ended' or 'multi-choice'.")
     return DEFAULT_SCHEMAS[mode]
+
+
+def get_question_list_model(question_mode: str, custom_schema: type[BaseModel] | None = None) -> type[BaseModel]:
+    """Build a Pydantic model wrapping a list of questions for structured inference.
+
+    instructor works best when the response_model is a single BaseModel, so we
+    wrap ``list[QuestionSchema]`` inside a container model.
+
+    Args:
+        question_mode: 'open-ended' or 'multi-choice'.
+        custom_schema: Optional custom schema to use instead of the default.
+
+    Returns:
+        A dynamically-created Pydantic model with a single ``questions`` field.
+    """
+    item_model = custom_schema or get_default_schema(question_mode)
+
+    # Create a new model class dynamically so that instructor sees a proper BaseModel
+    wrapper = type(
+        "QuestionListWrapper",
+        (BaseModel,),
+        {
+            "__annotations__": {"questions": list[item_model]},
+            "questions": Field(description="List of generated questions"),
+        },
+    )
+    return wrapper

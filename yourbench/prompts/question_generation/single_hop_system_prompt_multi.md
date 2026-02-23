@@ -89,7 +89,12 @@ Create wrong answers that are:
 - **Clear best answer**: Experts should agree on the correct choice
 - **Meaningful distractors**: Each reveals something about understanding
 - **Appropriate difficulty**: Mix easy (1-3), moderate (4-7), and challenging (8-10)
-- **Self-contained**: Answerable without external knowledge
+- **Self-contained**: Answerable without external knowledge. Write questions as if asking a subject-matter expert directly — NEVER reference the source material itself. Specifically:
+  - AVOID: "According to the document...", "The passage states...", "As described in the text..."
+  - AVOID: "In the table above...", "The table shows...", "Based on this section..."
+  - AVOID: "This manual describes...", "Which section...", "As shown/stated/mentioned in..."
+  - GOOD: "What is the primary purpose of A-CDM information sharing?"
+  - GOOD: "Which factor most directly affects the calculation of Target Off-Block Time?"
 - **Natural phrasing**: Questions a curious person would actually ask
 
 {schema_definition}

@@ -77,9 +77,46 @@ STANDARD_FIELDS: set[str] = {
 }
 
 
+def _sanitize_list_field(value: list) -> list:
+    """Ensure list elements have consistent types (coerce to strings if mixed)."""
+    if not value:
+        return value
+    # Check if all elements are the same type
+    types = set(type(v).__name__ for v in value if v is not None)
+    if len(types) <= 1:
+        return value
+    # Mixed types - coerce all to strings for PyArrow compatibility
+    return [str(v) if v is not None else None for v in value]
+
+
+def _sanitize_custom_value(value):
+    """Sanitize a custom field value for PyArrow compatibility.
+
+    Ensures consistent types:
+    - Lists are checked for mixed types and coerced to strings if needed
+    - Non-list values are converted to strings to ensure consistency across rows
+    """
+    if value is None:
+        return None
+    if isinstance(value, list):
+        return _sanitize_list_field(value)
+    # For scalar values, convert to string to avoid type conflicts across rows
+    if isinstance(value, (int, float, bool)):
+        return str(value)
+    return value
+
+
 def _extract_custom_fields(pair: dict) -> dict:
-    """Extract custom schema fields that are not part of the standard QuestionRow."""
-    return {key: value for key, value in pair.items() if key not in STANDARD_FIELDS}
+    """Extract custom schema fields that are not part of the standard QuestionRow.
+
+    Sanitizes values to ensure consistent types for PyArrow compatibility.
+    """
+    result = {}
+    for key, value in pair.items():
+        if key in STANDARD_FIELDS:
+            continue
+        result[key] = _sanitize_custom_value(value)
+    return result
 
 
 def _has_difficulty_field(pair: dict) -> bool:

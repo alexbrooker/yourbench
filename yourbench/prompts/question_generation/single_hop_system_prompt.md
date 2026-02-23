@@ -72,7 +72,12 @@ After closing `</document_analysis>`, output your questions in the specified JSO
 - **Comprehensive coverage**: Questions should collectively test understanding of all key content
 - **Interesting & engaging**: Avoid purely mechanical questions; make them thought-provoking when possible
 - **Varied difficulty**: Mix easy, moderate, and challenging questions for complete assessment
-- **Self-contained**: Each Q&A pair must stand alone without external context
+- **Self-contained**: Each Q&A pair must stand alone without external context. Write questions as if asking a subject-matter expert directly — NEVER reference the source material itself. Specifically:
+  - AVOID: "According to the document...", "The passage states...", "As described in the text..."
+  - AVOID: "In the table above...", "The table shows...", "Based on this section..."
+  - AVOID: "This manual describes...", "Which section...", "As shown/stated/mentioned in..."
+  - GOOD: "What are the primary responsibilities of the CDM Airport Coordinator?"
+  - GOOD: "How does variable taxi time improve departure sequencing accuracy?"
 - **Natural tone**: Write conversationally, as if testing a colleague's understanding
 - **Precision**: Be specific without being verbose
 - **Citations**: Quote directly from the text chunk to support answers

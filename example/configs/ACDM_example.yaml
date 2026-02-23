@@ -1,0 +1,55 @@
+hf_configuration:
+  hf_token: $HF_TOKEN
+  hf_organization: $HF_ORGANIZATION
+  private: false
+  hf_dataset_name: AirsideLabs/A-CDM
+  concat_if_exist: false
+
+model_list:
+  - model_name: meta-llama/llama-4-maverick-17b-128e-instruct
+    provider: null
+    base_url: "https://api.groq.com/openai/v1"
+    api_key: $GROQ_API_KEY
+    max_concurrent_requests: 3
+  - model_name: gpt-4.1-mini
+    provider: null
+    base_url: "https://api.openai.com/v1"
+    api_key: $OPENAI_API_KEY
+    max_concurrent_requests: 20
+
+model_roles:
+  ingestion:
+    - meta-llama/llama-4-maverick-17b-128e-instruct
+  summarization:
+    - meta-llama/llama-4-maverick-17b-128e-instruct
+  single_hop_question_generation:
+    - gpt-4.1-mini
+  multi_hop_question_generation:
+    - gpt-4.1-mini
+  question_rewriting:
+    - gpt-4.1-mini
+
+pipeline:
+  ingestion:
+    run: false
+    source_documents_dir: custom_data/raw_ACDM
+    output_dir: custom_data/processed_ACDM
+  summarization:
+    run: false
+  chunking:
+    run: false
+    l_max_tokens: 400
+  single_hop_question_generation:
+    run: true
+    question_mode: "multi-choice"
+    additional_instructions: "Generate factual questions about A-CDM (Airport Collaborative Decision Making) concepts, processes, and stakeholder roles"
+  multi_hop_question_generation:
+    run: true
+    question_mode: "multi-choice"
+    additional_instructions: "Generate questions that require synthesizing knowledge across multiple A-CDM concepts, milestones, and stakeholder interactions"
+  question_rewriting:
+    run: true
+  prepare_lighteval:
+    run: true
+  citation_score_filtering:
+    run: true
