@@ -21,7 +21,7 @@ class HFConfig(BaseModel):
 
     hf_dataset_name: str = ""
     hf_organization: str = ""
-    hf_token: str = ""
+    hf_token: str = Field(default="", repr=False)
     private: bool = False
     concat_if_exist: bool = False
     local_dataset_dir: str = "data/saved_dataset"
@@ -39,7 +39,7 @@ class ModelConfig(BaseModel):
 
     model_name: str = ""
     base_url: str | None = None
-    api_key: str | None = None
+    api_key: str | None = Field(default=None, repr=False)
     max_concurrent_requests: int = 128
     encoding_name: str = "cl100k_base"
     provider: str | None = None

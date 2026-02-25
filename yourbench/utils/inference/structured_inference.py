@@ -277,5 +277,5 @@ def run_structured_inference(
             return result
 
         except Exception as e:
-            logger.critical("Error running structured inference for step '{}': {}", step_name, e)
+            logger.critical("Error running structured inference for step '{}': {}", step_name, str(e)[:200])
             return {}
